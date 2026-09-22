@@ -1,5 +1,5 @@
 import type { Graph } from '../graph/builder.js';
 
-export function writeArtifact(graph: Graph, outputPath: string): void {
+export function readArtifact(artifactPath: string): Graph {
   throw new Error('not implemented');
 }

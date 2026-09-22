@@ -1,4 +1,5 @@
 interface Config<Names extends string> {
+  // allow for some sort of naming
   systems: { name: Names; path: string }[];
   connections: [Names, Names][];
   exempt: string[];
