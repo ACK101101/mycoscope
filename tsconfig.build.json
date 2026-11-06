@@ -1,0 +1,11 @@
+{
+  // The shipped build: src only, emitted to dist/. Everything else is inherited from tsconfig.json.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src", // keeps dist/ layout identical to src/
+    "outDir": "./dist",
+    "noEmit": false,
+    "allowImportingTsExtensions": false // only legal alongside noEmit
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,7 @@
+node_modules
+dist
+package-lock.json
+# Fixtures break rules on purpose and tests pin their line and column; never reformat them.
+tests/fixtures
+# Prose is left as written.
+*.md
