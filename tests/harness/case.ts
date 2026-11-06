@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+import { assertBehaviorEqual } from "./behavior.ts";
 import { describe, test } from "node:test";
 
 // One case shape for both backends.
@@ -58,13 +58,13 @@ export function assertFound(
     found: readonly Found[],
     expect: readonly Expected[],
 ): void {
-    assert.deepEqual(
+    assertBehaviorEqual(
         found.map((f) => position(f)),
         expect.map((e) => position(e)),
     );
     for (const [i, want] of expect.entries()) {
         if (want.message !== undefined) {
-            assert.equal(found[i]?.message, want.message);
+            assertBehaviorEqual(found[i]?.message ?? null, want.message);
         }
     }
 }

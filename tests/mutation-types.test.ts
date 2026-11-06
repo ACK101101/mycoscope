@@ -1,48 +1,36 @@
-import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { test } from "node:test";
+import { createProject } from "./harness/project.ts";
+import assert from "node:assert/strict";
+import { test, after } from "node:test";
 import ts from "typescript";
 
-const FILE = resolve("tests/snippets/mutation-types.ts");
 const IMPORT =
     'import type { Mut, MutDeep } from "../../src/mutation.js";\nexport type MarkerTypes = [Mut<object>, MutDeep<object>];\n';
 
-function diagnostics(code: string): readonly number[] {
-    const parsed = ts.getParsedCommandLineOfConfigFile(
-        "tsconfig.json",
-        {},
-        {
-            ...ts.sys,
-            onUnRecoverableConfigFileDiagnostic: (diagnostic): never => {
-                throw new Error(
-                    ts.flattenDiagnosticMessageText(
-                        diagnostic.messageText,
-                        "\n",
-                    ),
-                );
-            },
+const parsed = ts.getParsedCommandLineOfConfigFile(
+    "tsconfig.json",
+    {},
+    {
+        ...ts.sys,
+        onUnRecoverableConfigFileDiagnostic: (diagnostic): never => {
+            throw new Error(
+                ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
+            );
         },
-    );
-    assert.ok(parsed !== undefined);
-    const host = ts.createCompilerHost(parsed.options);
-    const original = host.getSourceFile.bind(host);
-    const program = ts.createProgram([FILE], parsed.options, {
-        ...host,
-        getSourceFile: (
-            file,
-            languageVersion,
-            onError,
-            shouldCreateNewSourceFile,
-        ) =>
-            file === FILE
-                ? ts.createSourceFile(file, IMPORT + code, languageVersion)
-                : original(
-                      file,
-                      languageVersion,
-                      onError,
-                      shouldCreateNewSourceFile,
-                  ),
+    },
+);
+assert.ok(parsed !== undefined);
+const project = createProject(
+    process.cwd(),
+    "tests/snippets/mutation-types.ts",
+    parsed.options,
+);
+after(() => {
+    project.dispose();
+});
+function diagnostics(code: string): readonly number[] {
+    const program = project.program({
+        "tests/snippets/mutation-types.ts": IMPORT + code,
     });
     return ts
         .getPreEmitDiagnostics(program)

@@ -11,13 +11,15 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
     "lint": "eslint src scripts tests eslint-rules --max-warnings 0",
-    "test": "node --import tsx --test --test-concurrency=1 \"tests/**/*.test.ts\"",
+    "test": "node --import tsx scripts/testing/run.ts",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:effect": "effect-language-service diagnostics --project tsconfig.json --format json --strict",
     "check:wiring": "node --import tsx src/index.ts mycoscope.effects.json",
-    "test:ci": "node --import tsx --test \"tests/**/*.test.ts\""
+    "test:ci": "node --import tsx scripts/testing/run.ts --all --ci",
+    "test:integration": "node --import tsx scripts/testing/run.ts --integration",
+    "test:all": "node --import tsx scripts/testing/run.ts --all"
   },
   "keywords": [],
   "author": "",
