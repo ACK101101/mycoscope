@@ -3,6 +3,7 @@ import eslint from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
 import eslintComments from "@eslint-community/eslint-plugin-eslint-comments";
+import unicorn from "eslint-plugin-unicorn";
 
 // Restrict syntax that complicates dependency resolution for the graph builder.
 // The builder must record an unresolved edge when it cannot resolve a dependency.
@@ -53,6 +54,7 @@ export default defineConfig(
         linterOptions: { reportUnusedDisableDirectives: "error" },
         plugins: {
             "@eslint-community/eslint-comments": eslintComments,
+            unicorn,
         },
         languageOptions: {
             parserOptions: {
@@ -104,6 +106,35 @@ export default defineConfig(
             "no-bitwise": "error", // Require an explicit exception for bitwise operations.
             "no-sequences": "error", // Reject comma expressions that combine operations.
             "no-return-assign": "error", // Reject unparenthesized assignments in return statements.
+            // TRIAL (this repo only, not in the export): conditions must be booleans, not truthy/falsy.
+            "@typescript-eslint/strict-boolean-expressions": [
+                "error",
+                {
+                    allowString: false,
+                    allowNumber: false,
+                    allowNullableObject: false,
+                },
+            ],
+            // Opt-in, rule by rule: we never spread unicorn's preset.
+            // The default exempts "simple" callbacks such as `(a, b) => a + b`; we want those as loops too.
+            "unicorn/no-array-reduce": [
+                "error",
+                { allowSimpleOperations: false },
+            ],
+            "unicorn/no-for-each": "error", // for...of can break, return and await; forEach can't
+            // `.map(parseInt)` type-checks but passes the index as the radix; name the call instead.
+            "unicorn/no-array-callback-reference": "error",
+            "unicorn/no-negated-condition": "error", // `if (!a) x else y` -> `if (a) y else x`
+            "unicorn/no-lonely-if": "error", // `if (a) { if (b) … }` -> `if (a && b)`
+            "unicorn/no-useless-else": "error", // no `else` after return/throw: the rest is the else
+            // Default depth 3: `f(g(h(x)))` is fine, one more is a named intermediate.
+            "unicorn/max-nested-calls": "error",
+            "unicorn/no-unreadable-array-destructuring": "error", // `const [,, third] = xs`
+            "unicorn/no-unreadable-object-destructuring": "error",
+            "unicorn/no-unreadable-iife": "error",
+            "unicorn/no-unreadable-new-expression": "error",
+            "unicorn/no-unreadable-for-of-expression": "error",
+
             // Graph completeness: ban what the builder can't resolve
             // TypeScript's parser rejects these constructs before ESLint rules can run.
             "no-octal": "off",
