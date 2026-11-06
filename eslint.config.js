@@ -3,6 +3,7 @@ import eslint from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
 import eslintComments from "@eslint-community/eslint-plugin-eslint-comments";
+import unicorn from "eslint-plugin-unicorn";
 
 // We want static resolution for the graph builder. These are selectors for constructs
 // that make this hard. Banning them keeps the call/import graph more complete.
@@ -60,6 +61,7 @@ export default defineConfig(
         linterOptions: { reportUnusedDisableDirectives: "error" },
         plugins: {
             "@eslint-community/eslint-comments": eslintComments,
+            unicorn,
         },
         languageOptions: {
             parserOptions: {
@@ -110,10 +112,39 @@ export default defineConfig(
             // disable with a reason, which makes the choice visible in the graph.
             "no-nested-ternary": "error", // use if/else or a named helper
             eqeqeq: ["error", "always"], // `==` coerces both sides; `0 == ""` is true
+            // TRIAL (this repo only, not in the export): conditions must be booleans, not truthy/falsy.
+            "@typescript-eslint/strict-boolean-expressions": [
+                "error",
+                {
+                    allowString: false,
+                    allowNumber: false,
+                    allowNullableObject: false,
+                },
+            ],
             "no-implicit-coercion": "error", // `!!x` and `+x` hide the conversion; write Boolean(x), Number(x)
             "no-bitwise": "error", // `a | b` is nearly always a typo for `||` or a trick
             "no-sequences": "error", // the comma operator
             "no-return-assign": "error", // `return x = y` reads as a comparison
+            // Opt-in, rule by rule: we never spread unicorn's preset.
+            // The default exempts "simple" callbacks such as `(a, b) => a + b`; we want those as loops too.
+            "unicorn/no-array-reduce": [
+                "error",
+                { allowSimpleOperations: false },
+            ],
+            "unicorn/no-for-each": "error", // for...of can break, return and await; forEach can't
+            // `.map(parseInt)` type-checks but passes the index as the radix; name the call instead.
+            "unicorn/no-array-callback-reference": "error",
+            "unicorn/no-negated-condition": "error", // `if (!a) x else y` -> `if (a) y else x`
+            "unicorn/no-lonely-if": "error", // `if (a) { if (b) … }` -> `if (a && b)`
+            "unicorn/no-useless-else": "error", // no `else` after return/throw: the rest is the else
+            // Default depth 3: `f(g(h(x)))` is fine, one more is a named intermediate.
+            "unicorn/max-nested-calls": "error",
+            "unicorn/no-unreadable-array-destructuring": "error", // `const [,, third] = xs`
+            "unicorn/no-unreadable-object-destructuring": "error",
+            "unicorn/no-unreadable-iife": "error",
+            "unicorn/no-unreadable-new-expression": "error",
+            "unicorn/no-unreadable-for-of-expression": "error",
+
             // ── Graph completeness: ban what the builder can't resolve ──────────────
             "no-restricted-syntax": ["error", ...unresolvableSyntax],
             "no-eval": "error", // target is a string
