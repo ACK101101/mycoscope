@@ -3,6 +3,7 @@ import "../effects/wiring.test.ts";
 import "../exceptions.test.ts";
 import "../harness/project.test.ts";
 import "../mutation-types.test.ts";
+import "../red-green/protocol.test.ts";
 import "../rule-coverage.test.ts";
 import "../rules.test.ts";
 import "../rules/consistent-type-imports.test.ts";

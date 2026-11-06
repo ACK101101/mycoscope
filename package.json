@@ -18,6 +18,7 @@
     "check:effect": "effect-language-service diagnostics --project tsconfig.json --format json --strict",
     "check:wiring": "node --import tsx src/index.ts mycoscope.effects.json",
     "test:ci": "node --import tsx scripts/testing/run.ts --all --ci",
+    "check:red-green": "node --import tsx scripts/check-red-green.ts",
     "test:integration": "node --import tsx scripts/testing/run.ts --integration",
     "test:all": "node --import tsx scripts/testing/run.ts --all"
   },
