@@ -17,7 +17,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:effect": "effect-language-service diagnostics --project tsconfig.json --format json --strict",
-    "check:wiring": "node --import tsx src/index.ts mycoscope.effects.json"
+    "check:wiring": "node --import tsx src/index.ts mycoscope.effects.json",
+    "check:red-green": "node --import tsx scripts/check-red-green.ts"
   },
   "keywords": [],
   "author": "",
