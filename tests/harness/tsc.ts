@@ -1,3 +1,4 @@
+import type { Mut } from "../../src/mutation.js";
 import ts from "typescript";
 import { locate, runCases, type Case, type Found } from "./case.ts";
 
@@ -55,7 +56,7 @@ export function tscOption(
     const target = options.target ?? ts.ScriptTarget.ESNext;
     const base = ts.createCompilerHost(options);
     // Parsing the lib files dominates the cost of a case; share them between cases.
-    const libs: Map<string, ts.SourceFile | undefined> = new Map<
+    const libs: Mut<Map<string, ts.SourceFile | undefined>> = new Map<
         string,
         ts.SourceFile | undefined
     >();
@@ -75,7 +76,7 @@ export function tscOption(
                     ? ts.createSourceFile(name, code, target)
                     : lib(name),
         });
-        const found: Found[] = [];
+        const found: Mut<Found[]> = [];
         for (const d of ts.getPreEmitDiagnostics(program)) {
             found.push(
                 describeDiagnostic(

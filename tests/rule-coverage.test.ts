@@ -1,3 +1,4 @@
+import type { Mut } from "../src/mutation.js";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import { test } from "node:test";
@@ -11,8 +12,8 @@ function registeredRules(text: string): readonly string[] {
         ts.ScriptTarget.Latest,
         true,
     );
-    const constants: Map<string, string> = new Map<string, string>();
-    const found: Set<string> = new Set<string>();
+    const constants: Mut<Map<string, string>> = new Map<string, string>();
+    const found: Mut<Set<string>> = new Set<string>();
     function visit(node: ts.Node): void {
         if (
             ts.isVariableDeclaration(node) &&

@@ -8,6 +8,10 @@ const FIXTURES = "tests/fixtures";
 // Fixtures named for a rule break exactly that rule on purpose, and must be reported.
 // `rule--variant` when one rule has several ways to break. The name check below keeps
 // fixture, rule and test lined up. Test rules here so they can not silently stop firing.
+// Shared tail of every no-foreign-mutation message.
+const COPY =
+    "Copy it first (`const next = [...x]`) and mutate the copy, or return a new value.";
+
 // Each fixture pins one expected error from its rule: position and exact message. The rule
 // must fire exactly once, there. Other rules may also fire on a fixture (a mutated parameter
 // is also a mutable parameter); only the clean fixtures must be silent overall.
@@ -168,10 +172,135 @@ const cases: readonly {
         column: 8,
         message: "Missing return type on function.",
     },
+    {
+        fixture: "no-foreign-mutation--param",
+        ruleId: "mycoscope/no-foreign-mutation",
+        line: 2,
+        column: 5,
+        message: `Mutating \`xs\`: 'xs' is a parameter, so it belongs to the caller. ${COPY}`,
+    },
+    {
+        fixture: "no-foreign-mutation--alias",
+        ruleId: "mycoscope/no-foreign-mutation",
+        line: 3,
+        column: 5,
+        message: `Mutating \`alias\`: 'alias' may alias memory this function did not create. ${COPY}`,
+    },
+    {
+        fixture: "no-foreign-mutation--module-state",
+        ruleId: "mycoscope/no-foreign-mutation",
+        line: 4,
+        column: 5,
+        message: `Mutating \`cache\`: 'cache' is module-level state. ${COPY}`,
+    },
+    {
+        fixture: "no-foreign-mutation--member-assign",
+        ruleId: "mycoscope/no-foreign-mutation",
+        line: 2,
+        column: 5,
+        message: `Mutating \`counter.count\`: 'counter' is a parameter, so it belongs to the caller. ${COPY}`,
+    },
+    {
+        fixture: "no-foreign-mutation--loop-element",
+        ruleId: "mycoscope/no-foreign-mutation",
+        line: 3,
+        column: 9,
+        message: `Mutating \`task.done\`: 'task' may alias memory this function did not create. ${COPY}`,
+    },
+    {
+        fixture: "no-foreign-mutation--object-assign",
+        ruleId: "mycoscope/no-foreign-mutation",
+        line: 2,
+        column: 5,
+        message: `Mutating \`options\`: 'options' is a parameter, so it belongs to the caller. ${COPY}`,
+    },
+    {
+        fixture: "no-foreign-mutation--this",
+        ruleId: "mycoscope/no-foreign-mutation",
+        line: 5,
+        column: 9,
+        message: `Mutating \`this.count\`: 'this' state belongs to the class instance. ${COPY}`,
+    },
+    {
+        fixture: "no-foreign-mutation--global",
+        ruleId: "mycoscope/no-foreign-mutation",
+        line: 2,
+        column: 5,
+        message: `Mutating \`process.env["MODE"]\`: 'process' is a global. ${COPY}`,
+    },
+    {
+        fixture: "no-foreign-mutation--import",
+        ruleId: "mycoscope/no-foreign-mutation",
+        line: 4,
+        column: 5,
+        message: `Mutating \`env["MODE"]\`: 'env' is imported. ${COPY}`,
+    },
+    {
+        fixture: "no-foreign-mutation--destructured",
+        ruleId: "mycoscope/no-foreign-mutation",
+        line: 3,
+        column: 5,
+        message: `Mutating \`xs\`: 'xs' is destructured out of another value. ${COPY}`,
+    },
+    {
+        fixture: "no-foreign-mutation--call",
+        ruleId: "mycoscope/no-foreign-mutation",
+        line: 7,
+        column: 5,
+        message: `Mutating \`out\`: 'out' may alias memory this function did not create. ${COPY}`,
+    },
+    {
+        fixture: "no-foreign-mutation--delete",
+        ruleId: "mycoscope/no-foreign-mutation",
+        line: 2,
+        column: 5,
+        message: `Mutating \`options.retries\`: 'options' is a parameter, so it belongs to the caller. ${COPY}`,
+    },
+    {
+        fixture: "no-foreign-mutation--update",
+        ruleId: "mycoscope/no-foreign-mutation",
+        line: 2,
+        column: 5,
+        message: `Mutating \`counter.count\`: 'counter' is a parameter, so it belongs to the caller. ${COPY}`,
+    },
+    {
+        fixture: "no-foreign-mutation--set-add",
+        ruleId: "mycoscope/no-foreign-mutation",
+        line: 2,
+        column: 5,
+        message: `Mutating \`seen\`: 'seen' is a parameter, so it belongs to the caller. ${COPY}`,
+    },
+    {
+        fixture: "no-foreign-mutation--untraceable",
+        ruleId: "mycoscope/no-foreign-mutation",
+        line: 6,
+        column: 5,
+        message: `Mutating \`cache().n\`: its origin cannot be traced. ${COPY}`,
+    },
+    {
+        fixture: "no-foreign-mutation--fake-clone",
+        ruleId: "mycoscope/no-foreign-mutation",
+        line: 4,
+        column: 5,
+        message: `Mutating \`copy\`: 'copy' may alias memory this function did not create. ${COPY}`,
+    },
+    {
+        fixture: "no-let",
+        ruleId: "functional/no-let",
+        line: 1,
+        column: 8,
+        message: "Unexpected let, use const instead.",
+    },
 ];
 
 // Fixtures that must lint clean: the allowed paths.
-const CLEAN = ["clean", "disable-with-reason"];
+const CLEAN = [
+    "clean",
+    "disable-with-reason",
+    "no-foreign-mutation--ok",
+    "prefer-immutable-types",
+    "prefer-immutable-types--depth",
+];
 
 // Fixtures live outside tsconfig's `include`, so type-aware rules need them registered
 // as default-project files. Kept here so the real config stays free of test plumbing.
