@@ -3,7 +3,9 @@ import eslint from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
 import eslintComments from "@eslint-community/eslint-plugin-eslint-comments";
+import functional from "eslint-plugin-functional";
 import unicorn from "eslint-plugin-unicorn";
+import mycoscope from "./eslint-rules/index.ts";
 
 // We want static resolution for the graph builder. These are selectors for constructs
 // that make this hard. Banning them keeps the call/import graph more complete.
@@ -61,6 +63,8 @@ export default defineConfig(
         linterOptions: { reportUnusedDisableDirectives: "error" },
         plugins: {
             "@eslint-community/eslint-comments": eslintComments,
+            functional,
+            mycoscope,
             unicorn,
         },
         languageOptions: {
@@ -106,6 +110,14 @@ export default defineConfig(
             ],
             // A new union member must break every switch that doesn't handle it.
             "@typescript-eslint/switch-exhaustiveness-check": "error",
+
+            // ── Mutation: explicit reference permissions ─────────────────────────
+            // Unmarked references are readonly. Mut/MutDeep authorize shallow/deep writes.
+            "mycoscope/no-foreign-mutation": "error",
+            // Mut/MutDeep grant write access; annotation, call and return boundaries cannot invent it.
+            "mycoscope/no-permission-escalation": "error",
+            // Reassignment is fine inside a function (scoped), not in module state.
+            "functional/no-let": ["error", { allowInFunctions: true }],
 
             // ── Plain code: syntax that is almost always clever, rarely clearer ─────
             // Proxies for clarity, so they will sometimes misfire. The escape hatch is an inline

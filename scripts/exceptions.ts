@@ -1,3 +1,4 @@
+import type { Mut } from "../src/mutation.js";
 export interface AddedException {
     readonly file: string;
     readonly line: number;
@@ -40,7 +41,7 @@ function match(
 
 // Reads a unified diff (any context size) and returns every suppression directive it adds.
 export function findAddedExceptions(diff: string): AddedException[] {
-    const found: AddedException[] = [];
+    const found: Mut<AddedException[]> = [];
     let file = "";
     let line = 0;
     for (const raw of diff.split("\n")) {
