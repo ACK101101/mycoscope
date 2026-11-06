@@ -141,7 +141,65 @@ void test("every enabled upstream Effect diagnostic has a behavior case", async 
 
 void test("reasoned upstream suppressions retain their native behavior", async () => {
     const result = await check(
-        "// @effect-diagnostics-next-line effect/floatingEffect:off -- callback owns execution\nEffect.succeed(1);",
+        "// @effect-" +
+            "diagnostics-next-line effect/floatingEffect:off -- callback owns execution\nEffect.succeed(1);",
     );
     assert.equal(result.status, 0, result.output);
+});
+
+void test("every installed upstream diagnostic has an explicit severity decision", async () => {
+    const schema: unknown = JSON.parse(
+        await readFile(
+            "node_modules/@effect/language-service/schema.json",
+            "utf8",
+        ),
+    );
+    assert.ok(
+        typeof schema === "object" &&
+            schema !== null &&
+            "definitions" in schema,
+    );
+    const definitions = schema.definitions;
+    assert.ok(
+        typeof definitions === "object" &&
+            definitions !== null &&
+            "effectLanguageServicePluginDiagnosticSeverityDefinition" in
+                definitions,
+    );
+    const definition =
+        definitions.effectLanguageServicePluginDiagnosticSeverityDefinition;
+    assert.ok(
+        typeof definition === "object" &&
+            definition !== null &&
+            "properties" in definition &&
+            typeof definition.properties === "object" &&
+            definition.properties !== null,
+    );
+    const configured: unknown = JSON.parse(
+        await readFile("tsconfig.effect-settings.json", "utf8"),
+    );
+    assert.ok(
+        typeof configured === "object" &&
+            configured !== null &&
+            "compilerOptions" in configured,
+    );
+    const options = configured.compilerOptions;
+    assert.ok(
+        typeof options === "object" &&
+            options !== null &&
+            "plugins" in options &&
+            Array.isArray(options.plugins),
+    );
+    const plugin: unknown = options.plugins[0];
+    assert.ok(
+        typeof plugin === "object" &&
+            plugin !== null &&
+            "diagnosticSeverity" in plugin &&
+            typeof plugin.diagnosticSeverity === "object" &&
+            plugin.diagnosticSeverity !== null,
+    );
+    assert.deepEqual(
+        Object.keys(plugin.diagnosticSeverity).toSorted(),
+        Object.keys(definition.properties).toSorted(),
+    );
 });
