@@ -1,0 +1,27 @@
+name: exceptions
+
+on: pull_request
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BASE_REF: ${{ github.base_ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - name: Build comment from PR diff
+        run: git diff -U0 "origin/$BASE_REF"...HEAD | npx tsx scripts/exceptions-report.ts > comment.md
+      - name: Post or update the comment
+        run: gh pr comment "${{ github.event.pull_request.number }}" --body-file comment.md --edit-last --create-if-none
