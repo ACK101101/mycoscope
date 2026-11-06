@@ -1,3 +1,4 @@
+import { effectOverrides } from "../src/effects/directives.js";
 import type { Mut } from "../src/mutation.js";
 export interface AddedException {
     readonly file: string;
@@ -9,16 +10,19 @@ export interface AddedException {
 export const MARKER = "<!-- mycoscope:exceptions -->";
 
 const DIRECTIVE =
-    /(?:\/\/|\/\*)\s*(eslint-disable(?:-next-line|-line)?|@ts-expect-error|@ts-ignore|@ts-nocheck)\b(.*)$/;
+    /(?:\/\/|\/\*)\s*(eslint-disable(?:-next-line|-line)?|@mycoscope-exception|@effect-diagnostics(?:-next-line)?|@ts-expect-error|@ts-ignore|@ts-nocheck)\b(.*)$/;
 const HUNK = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
 const SCANNED = /\.tsx?$/;
 // Fixtures break rules on purpose; test files quote directives as data.
 const SKIPPED = /(^|\/)tests\/fixtures\/|\.test\.tsx?$/;
 
 function reasonOf(directive: string, rest: string): string {
-    const text = directive.startsWith("eslint")
-        ? rest.split(" -- ").slice(1).join(" -- ")
-        : rest;
+    const text =
+        directive.startsWith("eslint") ||
+        directive.startsWith("@effect") ||
+        directive === "@mycoscope-exception"
+            ? rest.split(" -- ").slice(1).join(" -- ")
+            : rest;
     return text.replace(/\*\/\s*$/, "").trim();
 }
 
@@ -29,13 +33,14 @@ function match(
 ): AddedException | null {
     if (!SCANNED.test(file) || SKIPPED.test(file)) return null;
     const hit = DIRECTIVE.exec(added);
-    const directive = hit?.[1];
+    const effect = effectOverrides(added)[0];
+    const directive = effect?.directive ?? hit?.[1];
     if (directive === undefined) return null;
     return {
         file,
         line,
         directive,
-        reason: reasonOf(directive, hit?.[2] ?? ""),
+        reason: reasonOf(directive, effect?.rest ?? hit?.[2] ?? ""),
     };
 }
 

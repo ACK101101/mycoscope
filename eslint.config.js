@@ -114,6 +114,7 @@ export default defineConfig(
             // ── Mutation: explicit reference permissions ─────────────────────────
             // Unmarked references are readonly. Mut/MutDeep authorize shallow/deep writes.
             "mycoscope/no-foreign-mutation": "error",
+            "mycoscope/effect-suppressions": "error",
             // Mut/MutDeep grant write access; annotation, call and return boundaries cannot invent it.
             "mycoscope/no-permission-escalation": "error",
             // Reassignment is fine inside a function (scoped), not in module state.

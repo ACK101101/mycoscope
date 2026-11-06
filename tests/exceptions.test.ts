@@ -56,3 +56,39 @@ void test("comment flags a missing reason and carries the marker", () => {
 void test("comment says none when nothing was added", () => {
     assert.match(renderComment([]), /none added/);
 });
+
+void test("Effect suppressions are included with their reason in the PR report", () => {
+    const diff = [
+        "+++ b/src/io.ts",
+        "@@ -0,0 +1,2 @@",
+        "+// @effect-" +
+            "diagnostics-next-line effect/floatingEffect:off -- third-party callback owns execution",
+        "+Effect.succeed(1);",
+    ].join("\n");
+    assert.deepEqual(findAddedExceptions(diff), [
+        {
+            file: "src/io.ts",
+            line: 1,
+            directive: "@effect-diagnostics-next-line",
+            reason: "third-party callback owns execution",
+        },
+    ]);
+});
+
+void test("wiring visibility exceptions appear in PR reports", () => {
+    const diff =
+        "+++ b/src/io.ts\n@@ -0,0 +1,2 @@\n+// @mycoscope-exception unresolved-wiring -- plugin owns selection\n+selectPlugin();";
+    assert.equal(findAddedExceptions(diff)[0]?.reason, "plugin owns selection");
+});
+
+void test("all effective upstream override placements appear in PR reports", () => {
+    const marker = "@effect-" + "diagnostics";
+    for (const line of [
+        `// note: ${marker} effect/floatingEffect:off`,
+        ` * ${marker} effect/floatingEffect:off`,
+        `const text = "${marker} effect/floatingEffect:off";`,
+    ]) {
+        const diff = `+++ b/src/io.ts\n@@ -0,0 +1 @@\n+${line}`;
+        assert.equal(findAddedExceptions(diff)[0]?.directive, marker);
+    }
+});
