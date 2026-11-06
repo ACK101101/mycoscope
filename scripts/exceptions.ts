@@ -9,16 +9,17 @@ export interface AddedException {
 export const MARKER = "<!-- mycoscope:exceptions -->";
 
 const DIRECTIVE =
-    /(?:\/\/|\/\*)\s*(eslint-disable(?:-next-line|-line)?|@ts-expect-error|@ts-ignore|@ts-nocheck)\b(.*)$/;
+    /(?:\/\/|\/\*)\s*(eslint-disable(?:-next-line|-line)?|@effect-diagnostics(?:-next-line)?|@ts-expect-error|@ts-ignore|@ts-nocheck)\b(.*)$/;
 const HUNK = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
 const SCANNED = /\.tsx?$/;
 // Fixtures break rules on purpose; test files quote directives as data.
 const SKIPPED = /(^|\/)tests\/fixtures\/|\.test\.tsx?$/;
 
 function reasonOf(directive: string, rest: string): string {
-    const text = directive.startsWith("eslint")
-        ? rest.split(" -- ").slice(1).join(" -- ")
-        : rest;
+    const text =
+        directive.startsWith("eslint") || directive.startsWith("@effect")
+            ? rest.split(" -- ").slice(1).join(" -- ")
+            : rest;
     return text.replace(/\*\/\s*$/, "").trim();
 }
 

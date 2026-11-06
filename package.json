@@ -14,13 +14,15 @@
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "check:effect": "effect-language-service diagnostics --project tsconfig.json --format json --strict"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "devDependencies": {
+    "@effect/language-service": "0.87.5",
     "@eslint-community/eslint-plugin-eslint-comments": "^4.8.1",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.1",
@@ -36,6 +38,7 @@
     "typescript-eslint": "^8.70.1"
   },
   "dependencies": {
+    "effect": "4.1.2",
     "neverthrow": "^8.2.0"
   }
 }

@@ -7,6 +7,7 @@
   // Deliberately absent: `paths` / `baseUrl`. Import aliases make the import graph
   // depend on config instead of on the code. Use relative imports to simplify the
   // builder's job.
+  "extends": "./tsconfig.effect-settings.json",
   "compilerOptions": {
     // ── File layout (plumbing) ───────────────────────────────────────────────
     // This config is for the editor, lint and type-checking: it covers everything and emits
