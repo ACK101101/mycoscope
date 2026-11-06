@@ -1,3 +1,4 @@
 #!/usr/bin/env node
+import { main, readArguments, setExitCode } from "./effects/cli.js";
 
-console.log("mycoscope");
+setExitCode(main(readArguments()));

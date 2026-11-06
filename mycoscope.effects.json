@@ -1,0 +1,10 @@
+{
+  "project": "tsconfig.build.json",
+  "wiringRoots": [{ "module": "src/effects/cli.ts", "export": "main" }],
+  "adapters": [
+    { "module": "src/effects/project.ts", "export": "readProject" },
+    { "module": "src/effects/cli.ts", "export": "readArguments" },
+    { "module": "src/effects/cli.ts", "export": "writeResult" },
+    { "module": "src/effects/cli.ts", "export": "setExitCode" }
+  ]
+}
