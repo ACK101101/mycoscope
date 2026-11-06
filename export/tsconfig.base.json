@@ -1,0 +1,41 @@
+{
+  // Strictness only: every option here is a rule that makes code unambiguous for humans, agents
+  // and tools. No environment or output plumbing; that lives in each repo's tsconfig.json,
+  // which `extends` this file.
+  //
+  // Deliberately absent: `paths` / `baseUrl`. Import aliases make the import graph depend on
+  // config instead of on the code. Use relative imports.
+  "compilerOptions": {
+    // ── Type strictness beyond `strict` ──────────────────────────────────────
+    // `strict` written out: each flag is a visible decision with its own test. A new TypeScript
+    // release can add a flag to `strict`; here it stays off until we choose it.
+    "noImplicitAny": true, // every binding has a type you can see or infer: no silent `any`
+    "strictNullChecks": true, // null and undefined are types: absence is handled, not assumed
+    "strictFunctionTypes": true, // function parameters are checked contravariantly
+    "strictBindCallApply": true, // bind/call/apply are checked against the real signature
+    "strictPropertyInitialization": true, // class fields are set before use
+    "strictBuiltinIteratorReturn": true, // built-in iterators return `undefined`, not `any`, when done
+    "noImplicitThis": true, // `this` has a known type
+    "useUnknownInCatchVariables": true, // `catch (e)` gives `unknown`: narrow before use
+    "alwaysStrict": true, // emit and parse in strict mode
+    "noUncheckedIndexedAccess": true, // arr[i] / record[k] are T | undefined: forces handling absence
+    "exactOptionalPropertyTypes": true, // `x?: T` means absent, not `undefined`: no two-way ambiguity
+    "noPropertyAccessFromIndexSignature": true, // record.foo must be record["foo"]: dynamic access looks dynamic
+
+    // ── Dead and ambiguous code ──────────────────────────────────────────────
+    "noImplicitReturns": true, // every path returns or none does
+    "noImplicitOverride": true, // overriding must say so: no silent shadowing on refactor
+    "noUnusedLocals": true, // dead code is noise
+    "noUnusedParameters": true, // unused params hint at wrong signatures; prefix with _ to opt out
+    "noFallthroughCasesInSwitch": true, // accidental fallthrough is a classic bug
+    "allowUnreachableCode": false, // unreachable code is an error, not a hint
+    "allowUnusedLabels": false, // labels are almost always typos
+
+    // ── Module hygiene (keeps the dependency graph honest) ───────────────────
+    "verbatimModuleSyntax": true, // `import type` is mandatory for types: value vs type edges are explicit
+    "isolatedModules": true, // each file must be understandable alone: no cross-file type tricks
+    "noUncheckedSideEffectImports": true, // `import "x"` must resolve: no silent typo'd side-effect imports
+    "moduleDetection": "force", // every file is a module: no accidental globals
+    "erasableSyntaxOnly": true // bans enums, namespaces, parameter properties: types erase cleanly, runs under tsx/node as-is
+  }
+}

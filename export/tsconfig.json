@@ -1,0 +1,15 @@
+{
+  // Per-repo plumbing. Strictness comes from tsconfig.base.json; adjust THIS file for your
+  // environment (e.g. a React app adds "DOM" to `lib` and sets `jsx`), not the base.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true, // editor, lint and type-check only
+    "allowImportingTsExtensions": true, // scripts import each other with .ts extensions and run under tsx; legal only with noEmit
+    "module": "nodenext", // real Node ESM resolution: imports mean what Node will run
+    "target": "esnext",
+    "lib": ["esnext"], // no DOM: accidental `window`/`document` use is a type error
+    "types": ["node"], // only Node globals; stops stray @types/* leaking in
+    "skipLibCheck": true // don't type-check node_modules .d.ts; our code is still fully checked
+  },
+  "include": ["src", "scripts"]
+}
