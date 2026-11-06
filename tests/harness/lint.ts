@@ -1,3 +1,5 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
 import { ESLint, type Linter } from "eslint";
 import type { ReadonlyDeep } from "type-fest";
 import { offsetOf, runCases, type Case, type Found } from "./case.ts";
@@ -74,4 +76,55 @@ export function lintRule(ruleId: string, cases: readonly Case[]): void {
             (m: ReadonlyDeep<Linter.LintMessage>) => toFound(code, m),
         );
     });
+}
+
+// Preset smoke tests pin our actual configuration, without duplicating upstream's
+// complete rule suites. Every enabled rule must reject a violation and accept a control.
+export function lintExamples(
+    ruleId: string,
+    invalid: string,
+    valid: string,
+    parserRejects = false,
+): void {
+    const engine = isolated(ruleId);
+    void test(`${ruleId} rejects its configured violation`, async () => {
+        const [result] = await (
+            await engine
+        ).lintText(invalid, { filePath: SNIPPET });
+        assert.ok(result !== undefined);
+        if (parserRejects) {
+            assert.ok(
+                result.messages.some(
+                    (message) =>
+                        message.fatal === true && message.ruleId === null,
+                ),
+                JSON.stringify(result.messages),
+            );
+        } else {
+            assert.ok(
+                result.messages.some((message) => message.ruleId === ruleId),
+                JSON.stringify(result.messages),
+            );
+            assert.ok(
+                result.messages.every((message) => message.ruleId === ruleId),
+                JSON.stringify(result.messages),
+            );
+        }
+    });
+    void test(`${ruleId} accepts its control`, async () => {
+        const [result] = await (
+            await engine
+        ).lintText(valid, { filePath: SNIPPET });
+        assert.deepEqual(result?.messages, []);
+    });
+}
+
+// TypeScript rejects legacy octal syntax before ESLint can visit it. Pin that
+// stronger parser rejection rather than weakening the parser just for these tests.
+export function lintParserExamples(
+    ruleId: string,
+    invalid: string,
+    valid: string,
+): void {
+    lintExamples(ruleId, invalid, valid, true);
 }
