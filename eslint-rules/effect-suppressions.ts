@@ -1,35 +1,42 @@
 import { ESLintUtils } from "@typescript-eslint/utils";
+import { effectOverrides } from "../src/effects/directives.ts";
 
 const createRule = ESLintUtils.RuleCreator((name) => `mycoscope/${name}`);
-
 export const effectSuppressions = createRule({
     name: "effect-suppressions",
     meta: {
         type: "problem",
         docs: {
             description:
-                "Effect diagnostic suppressions require a reviewable reason.",
+                "Effect diagnostic overrides must be comments with reviewable reasons.",
         },
         schema: [],
         messages: {
-            reason: "Add a reason after ` -- ` to this Effect suppression.",
+            reason: "Effect overrides must be comments with a reason after ` -- `. Upstream also interprets overrides hidden in literals.",
         },
     },
     defaultOptions: [],
     create(context) {
         return {
             Program(): void {
-                for (const comment of context.sourceCode.getAllComments()) {
-                    if (!/^\s*@effect-diagnostics\b/.test(comment.value))
-                        continue;
-                    const reason = comment.value
+                const source = context.sourceCode;
+                const comments = source.getAllComments();
+                for (const override of effectOverrides(source.text)) {
+                    const comment = comments.find(
+                        (candidate) =>
+                            candidate.range[0] <= override.index &&
+                            candidate.range[1] >=
+                                override.index + override.length,
+                    );
+                    const reason = override.rest
                         .split(" -- ")
                         .slice(1)
                         .join(" -- ")
+                        .replace(/\*\/\s*$/, "")
                         .trim();
-                    if (reason.length === 0)
+                    if (comment === undefined || reason.length === 0)
                         context.report({
-                            loc: comment.loc,
+                            loc: source.getLocFromIndex(override.index),
                             messageId: "reason",
                         });
                 }
