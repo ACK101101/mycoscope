@@ -3,7 +3,9 @@ import eslint from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
 import eslintComments from "@eslint-community/eslint-plugin-eslint-comments";
+import functional from "eslint-plugin-functional";
 import unicorn from "eslint-plugin-unicorn";
+import mycoscope from "./eslint-rules/index.ts";
 
 // Restrict syntax that complicates dependency resolution for the graph builder.
 // The builder must record an unresolved edge when it cannot resolve a dependency.
@@ -54,6 +56,8 @@ export default defineConfig(
         linterOptions: { reportUnusedDisableDirectives: "error" },
         plugins: {
             "@eslint-community/eslint-comments": eslintComments,
+            functional,
+            mycoscope,
             unicorn,
         },
         languageOptions: {
@@ -97,6 +101,14 @@ export default defineConfig(
             ],
             // Require switches to handle every union member.
             "@typescript-eslint/switch-exhaustiveness-check": "error",
+
+            // ── Mutation: explicit reference permissions ─────────────────────────
+            // Unmarked references are readonly. Mut/MutDeep authorize shallow/deep writes.
+            "mycoscope/no-foreign-mutation": "error",
+            // Mut/MutDeep grant write access; annotation, call and return boundaries cannot invent it.
+            "mycoscope/no-permission-escalation": "error",
+            // Reassignment is fine inside a function (scoped), not in module state.
+            "functional/no-let": ["error", { allowInFunctions: true }],
 
             // Control flow and conversions
             // Prefer explicit control flow and conversions. Document exceptions with a rule-specific disable.

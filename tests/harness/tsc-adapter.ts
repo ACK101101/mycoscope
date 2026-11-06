@@ -1,3 +1,4 @@
+import type { Mut } from "../../src/mutation.js";
 import ts from "typescript";
 import {
     locationFromOffset,
@@ -80,10 +81,8 @@ export function testCompilerOption(
     const target = options.target ?? ts.ScriptTarget.ESNext;
     const compilerHost = ts.createCompilerHost(options);
     // Reuse parsed library files across cases to avoid parsing them for every snippet.
-    const sourceFileCache: Map<string, ts.SourceFile | undefined> = new Map<
-        string,
-        ts.SourceFile | undefined
-    >();
+    const sourceFileCache: Mut<Map<string, ts.SourceFile | undefined>> =
+        new Map<string, ts.SourceFile | undefined>();
     const cachedSourceFile = (name: string): ts.SourceFile | undefined => {
         if (!sourceFileCache.has(name)) {
             sourceFileCache.set(name, compilerHost.getSourceFile(name, target));

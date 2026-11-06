@@ -48,7 +48,7 @@ void test("every enabled ESLint rule has rejection and acceptance coverage", asy
         [...new Set(syntaxSelectors)].sort(),
         syntaxRestrictionSettings(config)
             .restrictions.map(({ selector }) => selector)
-            .sort(),
+            .toSorted(),
         "Configured syntax selectors must match selector-specific rejection/acceptance tests",
     );
     assert.deepEqual(

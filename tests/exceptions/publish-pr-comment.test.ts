@@ -1,3 +1,4 @@
+import type { Mut } from "../../src/mutation.js";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
@@ -12,7 +13,10 @@ interface Comment {
 
 const BOT = "github-actions[bot]";
 
-async function publish(comments: Comment[], body: string): Promise<void> {
+async function publish(
+    comments: Mut<Mut<Comment>[]>,
+    body: string,
+): Promise<void> {
     const workflow = readFileSync(".github/workflows/exceptions.yml", "utf8");
     const script = workflow.split("          script: |\n")[1];
     assert.ok(
@@ -72,7 +76,7 @@ async function publish(comments: Comment[], body: string): Promise<void> {
 }
 
 void test("updates the marked exception report without overwriting other bot comments", async () => {
-    const comments = [
+    const comments: Mut<Mut<Comment>[]> = [
         { id: 1, user: { login: BOT }, body: "Another report" },
         { id: 2, user: { login: "other[bot]" }, body: `${MARKER}\nOther bot` },
         { id: 3, user: { login: BOT }, body: `${MARKER}\nPrevious exceptions` },
@@ -91,7 +95,7 @@ void test("updates the marked exception report without overwriting other bot com
 });
 
 void test("creates one report when only unrelated comments or other authors' markers exist", async () => {
-    const comments = [
+    const comments: Mut<Mut<Comment>[]> = [
         { id: 1, user: { login: BOT }, body: "Another report" },
         {
             id: 2,

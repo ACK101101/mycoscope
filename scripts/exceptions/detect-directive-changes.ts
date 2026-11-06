@@ -1,3 +1,4 @@
+import type { Mut } from "../../src/mutation.js";
 import assert from "node:assert/strict";
 import ts from "typescript";
 
@@ -35,9 +36,11 @@ function diffFilePath(header: string): string {
 function changedLinesByRevision(
     diff: string,
 ): Readonly<Record<SourceRevision, ReadonlyMap<string, ReadonlySet<number>>>> {
-    const files = {
-        base: new Map<string, Set<number>>(),
-        head: new Map<string, Set<number>>(),
+    const files: Readonly<
+        Record<SourceRevision, Mut<Map<string, Mut<Set<number>>>>>
+    > = {
+        base: new Map<string, Mut<Set<number>>>(),
+        head: new Map<string, Mut<Set<number>>>(),
     };
     let baseFile = "";
     let headFile = "";
@@ -89,7 +92,7 @@ function changedLinesByRevision(
 }
 
 function sourceComments(source: ts.SourceFile): readonly ts.CommentRange[] {
-    const comments = new Map<number, ts.CommentRange>();
+    const comments: Mut<Map<number, ts.CommentRange>> = new Map();
     const scanner = ts.createScanner(
         ts.ScriptTarget.Latest,
         false,
@@ -177,7 +180,7 @@ export function findExceptionChanges(
     diff: string,
     readSource: (file: string, revision: SourceRevision) => string,
 ): ExceptionChange[] {
-    const found: ExceptionChange[] = [];
+    const found: Mut<ExceptionChange[]> = [];
     const revisions: readonly SourceRevision[] = ["head", "base"];
     const changedLines = changedLinesByRevision(diff);
     for (const revision of revisions) {
