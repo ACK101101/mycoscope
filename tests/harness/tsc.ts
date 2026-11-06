@@ -10,8 +10,24 @@ function realOptions(): ts.CompilerOptions {
     const read = ts.readConfigFile("tsconfig.json", (path) =>
         ts.sys.readFile(path),
     );
+    if (read.error !== undefined)
+        throw new Error(
+            ts.flattenDiagnosticMessageText(read.error.messageText, "\n"),
+        );
     const config: unknown = read.config;
-    return ts.parseJsonConfigFileContent(config, ts.sys, process.cwd()).options;
+    const parsed = ts.parseJsonConfigFileContent(config, ts.sys, process.cwd());
+    if (parsed.errors.length > 0)
+        throw new Error(
+            parsed.errors
+                .map((diagnostic) =>
+                    ts.flattenDiagnosticMessageText(
+                        diagnostic.messageText,
+                        "\n",
+                    ),
+                )
+                .join("\n"),
+        );
+    return parsed.options;
 }
 
 // A diagnostic as a Found. Takes primitives so the TypeScript objects stay in the caller.
@@ -42,10 +58,8 @@ export function tscOption(
 ): void {
     const real = realOptions();
     const underTest = [option, ...alsoSet];
-    const missing = underTest.filter((name) => real[name] === undefined);
-    if (missing.length > 0) {
-        throw new Error(`${missing.join(", ")} not set in tsconfig.json`);
-    }
+    // Missing options use TypeScript's actual defaults in baseline replays.
+    // The diagnostic assertion, rather than setup, must detect the missing enforcement.
     const options: ts.CompilerOptions = {
         ...Object.fromEntries(
             [...PLUMBING, ...underTest].map((name) => [name, real[name]]),

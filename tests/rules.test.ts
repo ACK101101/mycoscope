@@ -307,17 +307,6 @@ const CLEAN = [
 const eslint = new ESLint({
     cwd: process.cwd(),
     ignore: false, // the real config ignores fixtures, this should not
-    overrideConfig: {
-        languageOptions: {
-            parserOptions: {
-                projectService: {
-                    allowDefaultProject: [`${FIXTURES}/*.ts`],
-                    maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 100,
-                },
-                tsconfigRootDir: process.cwd(),
-            },
-        },
-    },
 });
 
 async function lint(fixture: string): Promise<ESLint.LintResult["messages"]> {
@@ -352,7 +341,9 @@ for (const fixture of CLEAN) {
 
 // Keeps fixture, rule and test lined up: no orphan files, no missing files, names match rules.
 void test("every fixture has a test, and is named after its rule", async () => {
-    const onDisk = (await readdir(FIXTURES)).map((f) => f.replace(/\.ts$/, ""));
+    const onDisk = (await readdir(FIXTURES))
+        .filter((file) => file.endsWith(".ts"))
+        .map((f) => f.replace(/\.ts$/, ""));
     const tested = [...cases.map((c) => c.fixture), ...CLEAN];
     assert.deepEqual([...onDisk].sort(), [...tested].sort());
     for (const { fixture, ruleId } of cases) {

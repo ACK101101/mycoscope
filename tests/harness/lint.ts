@@ -1,11 +1,11 @@
-import assert from "node:assert/strict";
+import { assertBehaviorEqual } from "./behavior.ts";
 import { test } from "node:test";
 import { ESLint, type Linter } from "eslint";
 import type { ReadonlyDeep } from "type-fest";
 import { offsetOf, runCases, type Case, type Found } from "./case.ts";
 
-// A path that does not exist on disk: ESLint lints the text we pass, and the project service
-// types it through allowDefaultProject using the real tsconfig.json.
+// An in-project placeholder: lintText supplies fresh text while the project service
+// reuses its small project and the real compiler options inherited from the root.
 const SNIPPET = "tests/snippets/case.ts";
 
 function configuredRules(config: unknown): readonly string[] {
@@ -27,20 +27,12 @@ async function isolated(ruleId: string): Promise<ESLint> {
     const engine = new ESLint({ ignore: false });
     const config: unknown = await engine.calculateConfigForFile(SNIPPET);
     const rules = configuredRules(config);
-    if (!rules.includes(ruleId)) {
-        throw new Error(`${ruleId} is not configured in eslint.config.js`);
-    }
+    // An absent rule is valid baseline behavior: emit no target diagnostic, then let the
+    // case assertion distinguish it from the candidate. Setup failure is not RED evidence.
     return new ESLint({
         ignore: false,
         overrideConfig: [
             {
-                languageOptions: {
-                    parserOptions: {
-                        projectService: {
-                            allowDefaultProject: ["tests/snippets/*.ts"],
-                        },
-                    },
-                },
                 rules: Object.fromEntries(
                     rules
                         .filter((rule) => rule !== ruleId)
@@ -49,6 +41,12 @@ async function isolated(ruleId: string): Promise<ESLint> {
             },
         ],
     });
+}
+
+function requireParsed(messages: readonly Linter.LintMessage[]): void {
+    const fatal = messages.find((message) => message.fatal === true);
+    if (fatal !== undefined)
+        throw new Error(`Parser setup failure: ${fatal.message}`);
 }
 
 function toFound(code: string, m: ReadonlyDeep<Linter.LintMessage>): Found {
@@ -72,8 +70,10 @@ export function lintRule(ruleId: string, cases: readonly Case[]): void {
         const [result] = await (
             await engine
         ).lintText(code, { filePath: SNIPPET });
-        return (result?.messages ?? []).map(
-            (m: ReadonlyDeep<Linter.LintMessage>) => toFound(code, m),
+        if (result === undefined) throw new Error("ESLint returned no result.");
+        requireParsed(result.messages);
+        return result.messages.map((m: ReadonlyDeep<Linter.LintMessage>) =>
+            toFound(code, m),
         );
     });
 }
@@ -91,23 +91,24 @@ export function lintExamples(
         const [result] = await (
             await engine
         ).lintText(invalid, { filePath: SNIPPET });
-        assert.ok(result !== undefined);
+        if (result === undefined) throw new Error("ESLint returned no result.");
+        if (!parserRejects) requireParsed(result.messages);
         if (parserRejects) {
-            assert.ok(
+            assertBehaviorEqual(
                 result.messages.some(
                     (message) =>
                         message.fatal === true && message.ruleId === null,
                 ),
-                JSON.stringify(result.messages),
+                true,
             );
         } else {
-            assert.ok(
+            assertBehaviorEqual(
                 result.messages.some((message) => message.ruleId === ruleId),
-                JSON.stringify(result.messages),
+                true,
             );
-            assert.ok(
+            assertBehaviorEqual(
                 result.messages.every((message) => message.ruleId === ruleId),
-                JSON.stringify(result.messages),
+                true,
             );
         }
     });
@@ -115,7 +116,9 @@ export function lintExamples(
         const [result] = await (
             await engine
         ).lintText(valid, { filePath: SNIPPET });
-        assert.deepEqual(result?.messages, []);
+        if (result === undefined) throw new Error("ESLint returned no result.");
+        requireParsed(result.messages);
+        assertBehaviorEqual(result.messages, []);
     });
 }
 
