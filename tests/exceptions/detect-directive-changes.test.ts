@@ -2,9 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
     findExceptionChanges,
-    renderComment,
     type ExceptionChange,
-} from "../scripts/exceptions.ts";
+} from "../../scripts/exceptions/detect-directive-changes.ts";
 
 function addedFile(file: string, source: string): string {
     const lines = source.split("\n");
@@ -149,16 +148,6 @@ void test("ignores deleted and non-TypeScript files without reading them", () =>
     );
 });
 
-void test("comment flags a missing reason and carries the report marker", () => {
-    const body = renderComment(report("// @ts-expect-error"));
-    assert.match(body, /mycoscope:exceptions/);
-    assert.match(body, /no reason given/);
-});
-
-void test("comment says none when nothing was added", () => {
-    assert.match(renderComment([]), /no exception directive changes/);
-});
-
 void test("distinguishes active block directives from unsupported directive-like comments", () => {
     for (const newline of ["\n", "\r\n", "\r"]) {
         const source = `/* preceding explanation${newline} * @ts-expect-error: vendor type is wrong */${newline}f();`;
@@ -237,10 +226,6 @@ void test("reports a deleted suppression boundary with its base-revision locatio
             reason: "end workaround",
         },
     ]);
-    const body = renderComment(found);
-    assert.match(body, /Removed or edited suppression boundary/);
-    assert.match(body, /base/);
-    assert.match(body, /src\/a.ts:3/);
 });
 
 void test("detects a removed rule in a multiline suppression boundary", () => {

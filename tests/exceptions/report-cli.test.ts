@@ -7,7 +7,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const REPORT = fileURLToPath(
-    import.meta.resolve("../scripts/exceptions-report.ts"),
+    import.meta.resolve("../../scripts/exceptions/report-cli.ts"),
 );
 const LOADER = import.meta.resolve("tsx");
 const CHILD_ENV = Object.fromEntries(

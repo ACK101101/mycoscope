@@ -1,7 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { findExceptionChanges, renderComment } from "./exceptions.ts";
+import { findExceptionChanges } from "./detect-directive-changes.ts";
+import { renderComment } from "./render-pr-comment.ts";
 
-// Usage: tsx scripts/exceptions-report.ts <base-ref>
+// Usage: tsx scripts/exceptions/report-cli.ts <base-ref>
 // Read the diff and source files from the same Git snapshots.
 function git(args: readonly string[]): string {
     return execFileSync("git", args, { encoding: "utf8" });
@@ -9,7 +10,7 @@ function git(args: readonly string[]): string {
 
 const baseRef = process.argv[2];
 if (baseRef === undefined) {
-    throw new Error("Usage: tsx scripts/exceptions-report.ts <base-ref>");
+    throw new Error("Usage: tsx scripts/exceptions/report-cli.ts <base-ref>");
 }
 const head = git(["rev-parse", "HEAD"]).trim();
 const base = git(["merge-base", baseRef, head]).trim();

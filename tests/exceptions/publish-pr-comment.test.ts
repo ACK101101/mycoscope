@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
-import { MARKER } from "../scripts/exceptions.ts";
+import { MARKER } from "../../scripts/exceptions/render-pr-comment.ts";
 
 interface Comment {
     readonly id: number;
