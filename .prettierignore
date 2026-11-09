@@ -1,5 +1,7 @@
 node_modules
 dist
 package-lock.json
+# Local assistant settings are not part of the project.
+.claude/settings.local.json
 # Prose is left as written.
 *.md

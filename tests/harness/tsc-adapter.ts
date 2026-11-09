@@ -14,8 +14,23 @@ function readCompilerOptions(): ts.CompilerOptions {
     const read = ts.readConfigFile("tsconfig.json", (path) =>
         ts.sys.readFile(path),
     );
+    if (read.error !== undefined) {
+        throw new Error(
+            `Failed to read tsconfig.json: TS${String(read.error.code)}: ${ts.flattenDiagnosticMessageText(read.error.messageText, "\n")}`,
+        );
+    }
     const config: unknown = read.config;
-    return ts.parseJsonConfigFileContent(config, ts.sys, process.cwd()).options;
+    const parsed = ts.parseJsonConfigFileContent(config, ts.sys, process.cwd());
+    if (parsed.errors.length > 0) {
+        const messages = parsed.errors.map(
+            (diagnostic) =>
+                `TS${String(diagnostic.code)}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")}`,
+        );
+        throw new Error(
+            `Failed to parse tsconfig.json: ${messages.join("\n")}`,
+        );
+    }
+    return parsed.options;
 }
 
 // Convert the compiler diagnostic fields to the shared assertion format.

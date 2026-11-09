@@ -108,7 +108,10 @@ function runLintCases(
         const [result] = await (
             await engine
         ).lintText(code, { filePath: SNIPPET_PATH });
-        return (result?.messages ?? []).map(
+        if (result === undefined) {
+            throw new Error(`ESLint returned no result for ${SNIPPET_PATH}`);
+        }
+        return result.messages.map(
             (message: ReadonlyDeep<Linter.LintMessage>) =>
                 toActualDiagnostic(code, message),
         );
