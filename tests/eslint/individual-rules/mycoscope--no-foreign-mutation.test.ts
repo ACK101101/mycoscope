@@ -50,9 +50,6 @@ testLintRule("mycoscope/no-foreign-mutation", [
             "export function f(x: { readonly items: Mut<string[]> }): void { x.items.push('a'); }",
         expect: [],
     },
-]);
-
-testLintRule("mycoscope/no-foreign-mutation", [
     {
         name: "shallow permission does not authorize descendants",
         code:
@@ -129,9 +126,6 @@ testLintRule("mycoscope/no-foreign-mutation", [
             },
         ],
     },
-]);
-
-testLintRule("mycoscope/no-foreign-mutation", [
     {
         name: "an alias of a deep descendant preserves its permission",
         code:
@@ -153,9 +147,6 @@ testLintRule("mycoscope/no-foreign-mutation", [
             "export function f(xs: MutDeep<{ n: number }[]>): void { for (const x of xs) { x.n++; } }",
         expect: [],
     },
-]);
-
-testLintRule("mycoscope/no-foreign-mutation", [
     {
         name: "deep permissions propagate through builtin collection reads",
         code:
@@ -168,9 +159,6 @@ testLintRule("mycoscope/no-foreign-mutation", [
         code: "interface Map { set: (n: number) => void; }\nexport function f(x: Map): void { x.set(1); }",
         expect: [],
     },
-]);
-
-testLintRule("mycoscope/no-foreign-mutation", [
     {
         name: "call cannot hide a builtin receiver mutation",
         code: "export function f(xs: number[]): void {\nArray.prototype.push.call(xs, 1);\n}",

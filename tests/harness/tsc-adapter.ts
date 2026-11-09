@@ -100,7 +100,7 @@ export function testCompilerOption(
                     ? ts.createSourceFile(name, code, target)
                     : cachedSourceFile(name),
         });
-        const diagnostics: ActualDiagnostic[] = [];
+        const diagnostics: Mut<ActualDiagnostic[]> = [];
         for (const diagnostic of ts.getPreEmitDiagnostics(program)) {
             diagnostics.push(
                 toActualDiagnostic(

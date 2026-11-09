@@ -79,9 +79,6 @@ testLintRule(RULE, [
             "declare function write(x: Mut<{ n: number }>): void;\nexport function f(x: Mut<{ n: number }>): void { write(x); }",
         expect: [],
     },
-]);
-
-testLintRule(RULE, [
     {
         name: "deep containers cannot adopt borrowed elements through push",
         code:
@@ -117,9 +114,6 @@ testLintRule(RULE, [
             "export async function f(x: { readonly n: number }): Promise<Mut<{ n: number }>> {\nreturn x;\n}",
         expect: [{ id: RULE, line: 3, column: 8, text: "x" }],
     },
-]);
-
-testLintRule(RULE, [
     {
         name: "deep containers cannot adopt borrowed children through Object.assign",
         code:
@@ -141,9 +135,6 @@ testLintRule(RULE, [
             "export function f(x: Promise<{ readonly n: number }>): Promise<Mut<{ n: number }>> {\nreturn x;\n}",
         expect: [{ id: RULE, line: 3, column: 8, text: "x" }],
     },
-]);
-
-testLintRule(RULE, [
     {
         name: "constructors that return a borrowed object are not fresh allocations",
         code:
@@ -167,9 +158,6 @@ testLintRule(RULE, [
             "const x: MutDeep<Map<string, { n: number }>> = new Map<string, { n: number }>();",
         expect: [],
     },
-]);
-
-testLintRule(RULE, [
     {
         name: "reassignment cannot replace a deep alias with a borrowed object",
         code:
@@ -198,9 +186,6 @@ testLintRule(RULE, [
             "declare const borrowed: { readonly n: number };\nclass C { field: Mut<{ n: number }> = borrowed; }",
         expect: [{ id: RULE, line: 3, column: 39, text: "borrowed" }],
     },
-]);
-
-testLintRule(RULE, [
     {
         name: "string indexes cannot manufacture grants",
         code:
@@ -243,9 +228,6 @@ testLintRule(RULE, [
             "export function f(x: Mut<{ child: Mut<{ n: number }> }>, child: { n: number }): void {\nObject.assign(x, { child });\n}",
         expect: [{ id: RULE, line: 3, column: 18, text: "{ child }" }],
     },
-]);
-
-testLintRule(RULE, [
     {
         name: "recursive target types still check distinct nested source objects",
         code:
