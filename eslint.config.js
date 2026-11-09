@@ -4,37 +4,35 @@ import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
 import eslintComments from "@eslint-community/eslint-plugin-eslint-comments";
 
-// We want static resolution for the graph builder. These are selectors for constructs
-// that make this hard. Banning them keeps the call/import graph more complete.
-// If a ban is impossible, we must emit an explicit `unresolved` edge instead of
-// silently dropping it.
+// Restrict syntax that complicates dependency resolution for the graph builder.
+// The builder must record an unresolved edge when it cannot resolve a dependency.
 const unresolvableSyntax = [
     {
-        // obj[key]() — the callee is computed at runtime. Literal indexes (arr[0]()) are fine.
+        // Reject computed calls such as obj[key](). Allow literal keys such as arr[0]().
         selector:
             "CallExpression[callee.type='MemberExpression'][callee.computed=true][callee.property.type!='Literal']",
         message:
             "Computed call target is unresolvable. Use a Map/record of named functions and call the looked-up value explicitly.",
     },
     {
-        // import(spec) — the target module can be a runtime value.
+        // Reject dynamic imports, including those with literal module names.
         selector: "ImportExpression",
         message: "Dynamic import() is unresolvable. Use a static import.",
     },
     {
-        // export * from './x' — hides which symbols cross the module boundary.
+        // Reject wildcard re-exports so imports refer to the defining module.
         selector: "ExportAllDeclaration",
         message:
             "Barrel re-exports hide real dependency edges and cause cycles. Import from the defining file.",
     },
     {
-        // export { x } from './x' — same problem, symbol by symbol.
+        // Reject named re-exports so imports refer to the defining module.
         selector: "ExportNamedDeclaration[source]",
         message:
             "Re-exports hide real dependency edges. Import from the defining file.",
     },
     {
-        // Reflect.apply/get/... — indirect invocation or access by runtime value.
+        // Reject Reflect member access because it can hide call targets.
         selector: "MemberExpression[object.name='Reflect']",
         message:
             "Reflect enables indirect calls the graph cannot follow. Call the function directly.",
@@ -42,39 +40,34 @@ const unresolvableSyntax = [
 ];
 
 export default defineConfig(
-    // This file needs `export default` and isn't in tsconfig, so type-aware linting can't parse it.
-    // Fixtures break rules on purpose and sit outside tsconfig; tests/rules.test.ts lints them with `ignore: false`.
+    // Exclude this config because it is outside the TypeScript project.
+    // Fixtures contain intentional violations. tests/rules.test.ts lints them separately.
     { ignores: ["eslint.config.js", "dist", "tests/fixtures"] },
-    // Baseline: JS correctness rules (no-empty, no-useless-catch, no-unused-vars, ...).
+    // Apply recommended JavaScript correctness checks.
     eslint.configs.recommended,
-    // Type-aware strict set. Among others it forbids: any and calls on any (a call on `any`
-    // is an unresolved edge), non-null `!`, floating promises, throwing non-Errors,
-    // unnecessary conditions, and require().
+    // Apply strict TypeScript checks, including unsafe any usage and unhandled promises.
     tseslint.configs.strictTypeChecked,
-    // Consistency: Record<> over index signatures, `??` over `||`, etc.
+    // Apply the TypeScript preset for consistent syntax.
     tseslint.configs.stylisticTypeChecked,
     {
-        // Inline disables are allowed but must carry a reason (`-- why`).
-        // Disables that surpress nothing error.
-        // The CI diff check surfaces every one added for review.
+        // Report eslint-disable comments that suppress no diagnostics.
         linterOptions: { reportUnusedDisableDirectives: "error" },
         plugins: {
             "@eslint-community/eslint-comments": eslintComments,
         },
         languageOptions: {
             parserOptions: {
-                // Type-aware rules need the compiler; projectService reuses tsconfig.json.
+                // Use tsconfig.json to supply type information to ESLint rules.
                 projectService: true,
                 tsconfigRootDir: import.meta.dirname,
             },
         },
         rules: {
-            // ── Escape hatches: allowed only with a stated reason ───────────────────
-            // `-- reason` is mandatory on eslint-disable; unscoped (rule-less) disables are banned.
+            // Escape hatches: allowed only with a stated reason
+            // Require a reason and explicit rule names for eslint-disable comments.
             "@eslint-community/eslint-comments/require-description": "error",
             "@eslint-community/eslint-comments/no-unlimited-disable": "error",
-            // '@ts-expect-error' needs a description; @ts-ignore (never fails when fixed) and
-            // '@ts-nocheck' (whole file) is banned.
+            // Require a description for @ts-expect-error. Ban other TypeScript check directives.
             "@typescript-eslint/ban-ts-comment": [
                 "error",
                 {
@@ -86,45 +79,42 @@ export default defineConfig(
             ],
             // `x!` asserts non-null without checking. Narrow instead.
             "@typescript-eslint/no-non-null-assertion": "error",
-            // `import type` for type-only imports; the fixer writes a separate statement instead of
-            // inline `{ type X }`, so value and type edges stay on different lines.
-            // verbatimModuleSyntax already errors; this adds the autofix.
+            // Autofix type-only imports into separate import type statements.
+            // This keeps type dependencies separate from runtime dependencies.
             "@typescript-eslint/consistent-type-imports": [
                 "error",
                 { fixStyle: "separate-type-imports" },
             ],
 
-            // ── Types: make the type system carry the invariants ────────────────────
-            // Explicit return types make each function's contract a stated fact, not an inference.
+            // Type contracts
+            // Require explicit return types so function contracts are visible at the declaration.
             "@typescript-eslint/explicit-function-return-type": "error",
-            // `as` is the type system lying. Parse/narrow instead. (`as const` is still allowed.)
+            // Use narrowing instead of type assertions. Const assertions remain allowed.
             "@typescript-eslint/consistent-type-assertions": [
                 "error",
                 { assertionStyle: "never" },
             ],
-            // A new union member must break every switch that doesn't handle it.
+            // Require switches to handle every union member.
             "@typescript-eslint/switch-exhaustiveness-check": "error",
 
-            // ── Plain code: syntax that is almost always clever, rarely clearer ─────
-            // Proxies for clarity, so they will sometimes misfire. The escape hatch is an inline
-            // disable with a reason, which makes the choice visible in the graph.
-            "no-nested-ternary": "error", // use if/else or a named helper
-            eqeqeq: ["error", "always"], // `==` coerces both sides; `0 == ""` is true
-            "no-implicit-coercion": "error", // `!!x` and `+x` hide the conversion; write Boolean(x), Number(x)
-            "no-bitwise": "error", // `a | b` is nearly always a typo for `||` or a trick
-            "no-sequences": "error", // the comma operator
-            "no-return-assign": "error", // `return x = y` reads as a comparison
-            // ── Graph completeness: ban what the builder can't resolve ──────────────
+            // Control flow and conversions
+            // Prefer explicit control flow and conversions. Document exceptions with a rule-specific disable.
+            "no-nested-ternary": "error", // Use if/else or a named helper.
+            eqeqeq: ["error", "always"], // Require equality checks without type coercion.
+            "no-implicit-coercion": "error", // Use Boolean(x) and Number(x) instead of !!x and +x.
+            "no-bitwise": "error", // Require an explicit exception for bitwise operations.
+            "no-sequences": "error", // Reject comma expressions that combine operations.
+            "no-return-assign": "error", // Reject unparenthesized assignments in return statements.
+            // Graph completeness: ban what the builder can't resolve
             "no-restricted-syntax": ["error", ...unresolvableSyntax],
-            "no-eval": "error", // target is a string
-            "no-new-func": "error", // target is a string
+            "no-eval": "error", // Reject code execution from strings.
+            "no-new-func": "error", // Reject code execution from strings.
 
-            // // ── Size and complexity: god functions/files are the usual symptom of band-aids ──
-            // // TURNED OFF FOR NOW - I do not want to encourage over abstraction, will currently rely on manual
-            // // analysis to keep the code nice and tidy.
+            // Size limits remain disabled. Review decomposition manually to avoid
+            // encouraging abstractions created only to satisfy a numeric limit.
             // complexity: ['error', 10], // branching paths per function
             // 'max-depth': ['error', 3], // nested blocks
-            // 'max-params': ['error', 4], // more is a missing object type
+            // 'max-params': ['error', 4], // parameter count
             // 'max-lines-per-function': ['error', { max: 50, skipBlankLines: true, skipComments: true }],
             // 'max-lines': ['error', { max: 300, skipBlankLines: true, skipComments: true }],
         },

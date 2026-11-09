@@ -1,6 +1,6 @@
-import { lintRule } from "../harness/lint.ts";
+import { testLintRule } from "../harness/lint-adapter.ts";
 
-lintRule("no-nested-ternary", [
+testLintRule("no-nested-ternary", [
     {
         name: "a ternary inside a ternary is reported",
         code: 'export const label = (n: number): string => n > 0 ? "pos" : n < 0 ? "neg" : "zero";\n',

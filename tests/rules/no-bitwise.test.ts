@@ -1,6 +1,6 @@
-import { lintRule } from "../harness/lint.ts";
+import { testLintRule } from "../harness/lint-adapter.ts";
 
-lintRule("no-bitwise", [
+testLintRule("no-bitwise", [
     {
         name: "a bitwise operator is reported",
         code: "export const both = (a: number, b: number): number => a | b;\n",

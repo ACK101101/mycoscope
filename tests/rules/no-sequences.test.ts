@@ -1,6 +1,6 @@
-import { lintRule } from "../harness/lint.ts";
+import { testLintRule } from "../harness/lint-adapter.ts";
 
-lintRule("no-sequences", [
+testLintRule("no-sequences", [
     {
         name: "the comma operator is reported",
         code: "export const last = (a: number, b: number): number => (a, b);\n",

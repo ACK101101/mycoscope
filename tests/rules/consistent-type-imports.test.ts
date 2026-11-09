@@ -1,6 +1,6 @@
-import { lintRule } from "../harness/lint.ts";
+import { testLintRule } from "../harness/lint-adapter.ts";
 
-lintRule("@typescript-eslint/consistent-type-imports", [
+testLintRule("@typescript-eslint/consistent-type-imports", [
     {
         name: "a type imported as a value is reported",
         code: 'import { Linter } from "eslint";\nexport const level = (l: Linter.Severity): Linter.Severity => l;\n',

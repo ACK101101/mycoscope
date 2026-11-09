@@ -1,38 +1,49 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-// One case shape for both backends.
-// A lint case enables one rule and `id` is its name,
-// a tsc case sets one compiler option and `id` is the diagnostic code (`TS7006`).
-// `text` is the source the error points at, so a case survives edits elsewhere in its snippet.
-export interface Expected {
+// Both adapters use this format. `id` is an ESLint rule name or a TypeScript
+// diagnostic code, such as TS7006. `text` is the source covered by the diagnostic.
+export interface ExpectedDiagnostic {
     readonly id: string;
     readonly line: number;
     readonly column: number;
     readonly text: string;
-    // Pin when the exact wording matters; omit when the id already says everything.
+    // Set this to compare the exact message. Omit it to check only diagnostic identity.
     readonly message?: string;
 }
 
-export interface Found extends Expected {
+export interface ActualDiagnostic extends ExpectedDiagnostic {
     readonly message: string;
 }
 
-export interface Case {
+export interface TestCase {
     readonly name: string;
     readonly code: string;
-    // Empty means the snippet must be silent.
-    readonly expect: readonly Expected[];
+    // An empty array requires the snippet to produce no diagnostics.
+    readonly expect: readonly ExpectedDiagnostic[];
 }
 
-type Position = Pick<Expected, "id" | "line" | "column" | "text">;
+// Compare the diagnostic ID, location, and source text separately from its message.
+type DiagnosticIdentity = Pick<
+    ExpectedDiagnostic,
+    "id" | "line" | "column" | "text"
+>;
 
-function position({ id, line, column, text }: Expected): Position {
+function diagnosticIdentity({
+    id,
+    line,
+    column,
+    text,
+}: ExpectedDiagnostic): DiagnosticIdentity {
     return { id, line, column, text };
 }
 
 // 1-based line and column, as both ESLint and the TypeScript API report them.
-export function offsetOf(code: string, line: number, column: number): number {
+export function offsetFromLocation(
+    code: string,
+    line: number,
+    column: number,
+): number {
     const rowsBefore = code.split("\n").slice(0, line - 1);
     let lineStart = 0;
     for (const row of rowsBefore) {
@@ -41,11 +52,11 @@ export function offsetOf(code: string, line: number, column: number): number {
     return lineStart + column - 1;
 }
 
-// The inverse of offsetOf.
-export function locate(
+// Convert a source offset to a 1-based line and column.
+export function locationFromOffset(
     code: string,
     offset: number,
-): Pick<Expected, "line" | "column"> {
+): Pick<ExpectedDiagnostic, "line" | "column"> {
     const before = code.slice(0, offset);
     const lineStart = before.lastIndexOf("\n") + 1;
     return {
@@ -54,30 +65,30 @@ export function locate(
     };
 }
 
-export function assertFound(
-    found: readonly Found[],
-    expect: readonly Expected[],
+export function assertDiagnosticsMatch(
+    actual: readonly ActualDiagnostic[],
+    expected: readonly ExpectedDiagnostic[],
 ): void {
     assert.deepEqual(
-        found.map((f) => position(f)),
-        expect.map((e) => position(e)),
+        actual.map((diagnostic) => diagnosticIdentity(diagnostic)),
+        expected.map((diagnostic) => diagnosticIdentity(diagnostic)),
     );
-    for (const [i, want] of expect.entries()) {
+    for (const [i, want] of expected.entries()) {
         if (want.message !== undefined) {
-            assert.equal(found[i]?.message, want.message);
+            assert.equal(actual[i]?.message, want.message);
         }
     }
 }
 
 export function runCases(
     suite: string,
-    cases: readonly Case[],
-    run: (code: string) => Promise<readonly Found[]>,
+    cases: readonly TestCase[],
+    run: (code: string) => Promise<readonly ActualDiagnostic[]>,
 ): void {
     void describe(suite, () => {
         for (const { name, code, expect } of cases) {
             void test(name, async () => {
-                assertFound(await run(code), expect);
+                assertDiagnosticsMatch(await run(code), expect);
             });
         }
     });

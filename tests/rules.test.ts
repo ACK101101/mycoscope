@@ -5,12 +5,9 @@ import { ESLint } from "eslint";
 
 const FIXTURES = "tests/fixtures";
 
-// Fixtures named for a rule break exactly that rule on purpose, and must be reported.
-// `rule--variant` when one rule has several ways to break. The name check below keeps
-// fixture, rule and test lined up. Test rules here so they can not silently stop firing.
-// Each fixture pins one expected error from its rule: position and exact message. The rule
-// must fire exactly once, there. Other rules may also fire on a fixture (a mutated parameter
-// is also a mutable parameter); only the clean fixtures must be silent overall.
+// Each fixture must produce one diagnostic for its named rule at the expected location
+// with the expected message. Other rules may also report diagnostics for that fixture.
+// Name variants <rule>--<variant>. The final test checks fixture names and coverage.
 const cases: readonly {
     fixture: string;
     ruleId: string | null;
@@ -170,14 +167,14 @@ const cases: readonly {
     },
 ];
 
-// Fixtures that must lint clean: the allowed paths.
+// These fixtures must produce no ESLint diagnostics.
 const CLEAN = ["clean", "disable-with-reason"];
 
-// Fixtures live outside tsconfig's `include`, so type-aware rules need them registered
-// as default-project files. Kept here so the real config stays free of test plumbing.
+// Harness workaround: fixtures are excluded from tsconfig.json. allowDefaultProject
+// lets type-aware rules check them using that config. Apply this override only in tests.
 const eslint = new ESLint({
     cwd: process.cwd(),
-    ignore: false, // the real config ignores fixtures, this should not
+    ignore: false, // Lint fixtures even though Mycoscope's config ignores them.
     overrideConfig: {
         languageOptions: {
             parserOptions: {
@@ -221,7 +218,7 @@ for (const fixture of CLEAN) {
     });
 }
 
-// Keeps fixture, rule and test lined up: no orphan files, no missing files, names match rules.
+// Require a test for every fixture and a fixture for every listed test.
 void test("every fixture has a test, and is named after its rule", async () => {
     const onDisk = (await readdir(FIXTURES)).map((f) => f.replace(/\.ts$/, ""));
     const tested = [...cases.map((c) => c.fixture), ...CLEAN];

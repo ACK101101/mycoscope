@@ -1,7 +1,7 @@
-import { tscOption } from "../harness/tsc.ts";
+import { testCompilerOption } from "../harness/tsc-adapter.ts";
 
-// Only acts together with strictNullChecks, so both come from the real tsconfig.
-tscOption(
+// strictPropertyInitialization requires strictNullChecks. Read both from tsconfig.json.
+testCompilerOption(
     "strictPropertyInitialization",
     [
         {

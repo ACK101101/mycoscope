@@ -1,6 +1,6 @@
-import { lintRule } from "../harness/lint.ts";
+import { testLintRule } from "../harness/lint-adapter.ts";
 
-lintRule("eqeqeq", [
+testLintRule("eqeqeq", [
     {
         name: "loose equality is reported",
         code: "export const same = (a: number, b: number): boolean => a == b;\n",

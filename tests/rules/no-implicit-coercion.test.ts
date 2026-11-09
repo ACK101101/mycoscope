@@ -1,6 +1,6 @@
-import { lintRule } from "../harness/lint.ts";
+import { testLintRule } from "../harness/lint-adapter.ts";
 
-lintRule("no-implicit-coercion", [
+testLintRule("no-implicit-coercion", [
     {
         name: "!! is reported",
         code: "export const flag = (s: string): boolean => !!s;\n",

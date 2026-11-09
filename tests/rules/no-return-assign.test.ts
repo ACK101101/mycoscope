@@ -1,6 +1,6 @@
-import { lintRule } from "../harness/lint.ts";
+import { testLintRule } from "../harness/lint-adapter.ts";
 
-lintRule("no-return-assign", [
+testLintRule("no-return-assign", [
     {
         name: "assigning in a return is reported",
         code: "export function set(): number {\n    let n = 0;\n    return n = 1;\n}\n",

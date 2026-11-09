@@ -1,6 +1,6 @@
-import { tscOption } from "../harness/tsc.ts";
+import { testCompilerOption } from "../harness/tsc-adapter.ts";
 
-tscOption("noImplicitAny", [
+testCompilerOption("noImplicitAny", [
     {
         name: "an untyped parameter is implicitly any",
         code: "export function id(x) {\n    return x;\n}\n",
