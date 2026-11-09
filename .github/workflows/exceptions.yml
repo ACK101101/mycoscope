@@ -2,6 +2,10 @@ name: exceptions
 
 on: pull_request
 
+concurrency:
+  group: exceptions-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: write
@@ -10,7 +14,6 @@ jobs:
   report:
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ github.token }}
       BASE_REF: ${{ github.base_ref }}
     steps:
       - uses: actions/checkout@v4
@@ -22,6 +25,29 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Build comment from PR diff
-        run: git diff -U0 "origin/$BASE_REF"...HEAD | npx tsx scripts/exceptions-report.ts > comment.md
+        run: npx tsx scripts/exceptions-report.ts "origin/$BASE_REF" > comment.md
       - name: Post or update the comment
-        run: gh pr comment "${{ github.event.pull_request.number }}" --body-file comment.md --edit-last --create-if-none
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { readFileSync } = require("node:fs");
+            const body = readFileSync("comment.md", "utf8");
+            const marker = "<!-- mycoscope:exceptions -->";
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              ...context.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const report = comments.find(comment =>
+              comment.user?.login === "github-actions[bot]" &&
+              comment.body?.startsWith(marker)
+            );
+            if (report) {
+              await github.rest.issues.updateComment({
+                ...context.repo, comment_id: report.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                ...context.repo, issue_number: context.issue.number, body,
+              });
+            }
