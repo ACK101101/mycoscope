@@ -31,6 +31,10 @@ void test("a missing ESLint result fails instead of passing an acceptance case",
                     name: "valid source",
                     code: "export const n = 1;",
                     expect: [],
+                }, {
+                    name: "invalid source",
+                    code: "1 == 1;",
+                    expect: [{ id: "eqeqeq", line: 1, column: 3, text: "==" }],
                 }]);
             `,
         ],
@@ -95,3 +99,34 @@ for (const { name, config, phase } of CONFIG_FAILURES) {
         }
     });
 }
+
+void test("a different syntax restriction cannot satisfy a selector's rejection case", () => {
+    const result = spawnSync(
+        process.execPath,
+        [
+            "--import",
+            TSX_LOADER,
+            "--input-type=module",
+            "--eval",
+            `
+                import { testSyntaxRestriction } from ${JSON.stringify(LINT_ADAPTER)};
+                testSyntaxRestriction("ImportExpression", [{
+                    name: "another restriction",
+                    code: "Reflect.ownKeys({});",
+                    expect: [{ id: "no-restricted-syntax", line: 1, column: 1, text: "Reflect.ownKeys" }],
+                }, {
+                    name: "control",
+                    code: "Object.keys({});",
+                    expect: [],
+                }]);
+            `,
+        ],
+        { env: CHILD_ENV, encoding: "utf8", timeout: 20_000 },
+    );
+    assert.ifError(result.error);
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(
+        result.stdout + result.stderr,
+        /Expected values to be strictly deep-equal/,
+    );
+});
