@@ -267,8 +267,9 @@ async function lintReport(
         "tsconfig.effect-settings.json",
         "src/mutation.ts",
         "src/effects/directives.ts",
-        "tests/harness/lint.ts",
-        "tests/harness/case.ts",
+        "tests/harness/lint-adapter.ts",
+        "tests/harness/rule-coverage.ts",
+        "tests/harness/test-case.ts",
         "tests/harness/behavior.ts",
         "tests/snippets/case.ts",
         "tests/snippets/tsconfig.json",
@@ -295,7 +296,7 @@ async function lintReport(
     write(
         value.repository,
         "tests/equality.test.ts",
-        `import { lintExamples } from "./harness/lint.ts";\nlintExamples("eqeqeq", ${JSON.stringify(invalid)}, "export const f = (a: number, b: number): boolean => a === b;");\n`,
+        `import { testLintExamples } from "./harness/lint-adapter.ts";\ntestLintExamples("eqeqeq", ${JSON.stringify(invalid)}, "export const f = (a: number, b: number): boolean => a === b;");\n`,
     );
     write(
         value.repository,
@@ -306,7 +307,7 @@ async function lintReport(
             cases: [
                 {
                     file: "tests/equality.test.ts",
-                    name: "eqeqeq rejects its configured violation",
+                    name: "eqeqeq rejects its violation",
                     claim: "strict-equality",
                     baseline: {
                         status: "fail",
@@ -418,8 +419,8 @@ for (const invalid of [false, true])
                 git(value.repository, ["checkout", "-q", value.baseline]);
                 for (const file of [
                     "src/mutation.ts",
-                    "tests/harness/tsc.ts",
-                    "tests/harness/case.ts",
+                    "tests/harness/tsc-adapter.ts",
+                    "tests/harness/test-case.ts",
                     "tests/harness/behavior.ts",
                 ])
                     write(value.repository, file, readFileSync(file, "utf8"));
@@ -441,7 +442,7 @@ for (const invalid of [false, true])
                 write(
                     value.repository,
                     "tests/implicit.test.ts",
-                    'import { tscOption } from "./harness/tsc.ts";\ntscOption("noImplicitAny", [{ name: "implicit parameter", code: "export function f(value) { return value; }", expect: [{ id: "TS7006", line: 1, column: 19, text: "value" }] }, { name: "typed parameter", code: "export function f(value: number) { return value; }", expect: [] }]);\n',
+                    'import { testCompilerOption } from "./harness/tsc-adapter.ts";\ntestCompilerOption("noImplicitAny", [{ name: "implicit parameter", code: "export function f(value) { return value; }", expect: [{ id: "TS7006", line: 1, column: 19, text: "value" }] }, { name: "typed parameter", code: "export function f(value: number) { return value; }", expect: [] }]);\n',
                 );
                 write(
                     value.repository,
