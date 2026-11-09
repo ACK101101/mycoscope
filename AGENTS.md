@@ -33,3 +33,12 @@ const SNIPPET_PATH = "tests/snippets/case.ts";
 - Prefer clearer names before adding explanatory comments. Do not introduce abstractions solely to shorten names.
 
 After changing comments or names, inspect callers and comments for stale terminology. Run typecheck, lint, and the existing tests for code renames.
+
+## File layout
+
+- Group tests by the tool they exercise: `tests/eslint/` and `tests/typescript/`.
+- Group files at the same level by a consistent role. ESLint rule tests belong in `tests/eslint/individual-rules/`, linter-option tests in `tests/eslint/linter-options/`, and compiler-option tests in `tests/typescript/compiler-options/`.
+- Keep shared execution and assertion machinery in `tests/harness/`. Test files describe cases and call the adapters.
+- Let location identify the owning tool, filenames identify the behavior, and signatures identify inputs and outputs.
+- Use one execution path for individual-rule tests. Keep source snippets beside their expectations in the test file. Input storage does not define a separate test category.
+- Test individual rules and options for now. Add combined-config tests only when a concrete interaction needs coverage; assert the complete diagnostic result rather than filtering to one rule.

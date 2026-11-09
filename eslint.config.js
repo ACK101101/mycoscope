@@ -41,8 +41,7 @@ const unresolvableSyntax = [
 
 export default defineConfig(
     // Exclude this config because it is outside the TypeScript project.
-    // Fixtures contain intentional violations. tests/rules.test.ts lints them separately.
-    { ignores: ["eslint.config.js", "dist", "tests/fixtures"] },
+    { ignores: ["eslint.config.js", "dist"] },
     // Apply recommended JavaScript correctness checks.
     eslint.configs.recommended,
     // Apply strict TypeScript checks, including unsafe any usage and unhandled promises.

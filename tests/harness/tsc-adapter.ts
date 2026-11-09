@@ -4,7 +4,7 @@ import {
     runCases,
     type TestCase,
     type ActualDiagnostic,
-} from "./case.ts";
+} from "./test-case.ts";
 
 const SNIPPET_PATH = "/case.ts";
 // Copy the target and standard libraries from tsconfig.json so snippets can compile.

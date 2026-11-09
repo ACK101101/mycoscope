@@ -54,7 +54,5 @@
     // Performance
     "skipLibCheck": true // Skip checking declaration files, including dependency declarations.
   },
-  "include": ["src", "scripts", "tests", "eslint-rules"],
-  // Fixtures contain intentional errors. The lint tests check them using allowDefaultProject.
-  "exclude": ["tests/fixtures"]
+  "include": ["src", "scripts", "tests", "eslint-rules"]
 }

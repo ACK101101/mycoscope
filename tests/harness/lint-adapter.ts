@@ -5,7 +5,7 @@ import {
     runCases,
     type TestCase,
     type ActualDiagnostic,
-} from "./case.ts";
+} from "./test-case.ts";
 
 // Harness workaround: give in-memory source a path so ESLint applies Mycoscope's
 // lint settings. No file is written. allowDefaultProject below lets the TypeScript
@@ -27,7 +27,10 @@ function configuredRuleIds(config: unknown): readonly string[] {
 
 // Load Mycoscope's ESLint config and disable every rule except the one under test.
 // Keep that rule's configured options and severity.
-async function createSingleRuleLinter(ruleId: string): Promise<ESLint> {
+async function createSingleRuleLinter(
+    ruleId: string,
+    checkUnusedDisables = false,
+): Promise<ESLint> {
     const engine = new ESLint({ ignore: false });
     const config: unknown = await engine.calculateConfigForFile(SNIPPET_PATH);
     const rules = configuredRuleIds(config);
@@ -38,6 +41,11 @@ async function createSingleRuleLinter(ruleId: string): Promise<ESLint> {
         ignore: false,
         overrideConfig: [
             {
+                // Disabling rules can make their suppression comments appear unused.
+                // Test unused-disable reporting separately with its configured severity.
+                linterOptions: checkUnusedDisables
+                    ? {}
+                    : { reportUnusedDisableDirectives: "off" },
                 languageOptions: {
                     parserOptions: {
                         projectService: {
@@ -69,13 +77,34 @@ function toActualDiagnostic(
         line: message.line,
         column: message.column,
         text: code.slice(start, end),
+        severity: message.severity,
         message: message.message,
     };
 }
 
 export function testLintRule(ruleId: string, cases: readonly TestCase[]): void {
-    const engine = createSingleRuleLinter(ruleId);
-    runCases(ruleId, cases, async (code) => {
+    runLintCases(ruleId, cases, createSingleRuleLinter(ruleId));
+}
+
+// Unused-disable reporting is a linter option, not a rule. Keep the assertion rule
+// active so these cases distinguish directives that suppress an error from unused ones.
+export function testUnusedDisableDirectives(cases: readonly TestCase[]): void {
+    runLintCases(
+        "reportUnusedDisableDirectives",
+        cases,
+        createSingleRuleLinter(
+            "@typescript-eslint/consistent-type-assertions",
+            true,
+        ),
+    );
+}
+
+function runLintCases(
+    suite: string,
+    cases: readonly TestCase[],
+    engine: Promise<ESLint>,
+): void {
+    runCases(suite, cases, async (code) => {
         const [result] = await (
             await engine
         ).lintText(code, { filePath: SNIPPET_PATH });
