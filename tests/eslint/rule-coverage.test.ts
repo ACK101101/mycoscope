@@ -6,6 +6,7 @@ import {
     missingRuleTests,
     registeredRuleTests,
     requireRuleCases,
+    syntaxRestrictionSettings,
 } from "../harness/rule-coverage.ts";
 import type { TestCase } from "../harness/test-case.ts";
 
@@ -23,6 +24,9 @@ void test("every enabled ESLint rule has rejection and acceptance coverage", asy
             registeredRuleTests(await readFile(`${directory}/${file}`, "utf8")),
         ),
     );
+    const syntaxSelectors = registrations.flatMap(
+        (registration) => registration.syntaxSelectors,
+    );
     const rulesWithTests = registrations.flatMap(({ rules }) => rules);
     const parserTests = registrations.flatMap(
         ({ parserRestrictions }) => parserRestrictions,
@@ -39,6 +43,13 @@ void test("every enabled ESLint rule has rejection and acceptance coverage", asy
             const values: readonly unknown[] = setting;
             return values[0] === 0 || values[0] === "off" ? [] : [rule];
         },
+    );
+    assert.deepEqual(
+        [...new Set(syntaxSelectors)].sort(),
+        syntaxRestrictionSettings(config)
+            .restrictions.map(({ selector }) => selector)
+            .sort(),
+        "Configured syntax selectors must match selector-specific rejection/acceptance tests",
     );
     assert.deepEqual(
         missingRuleTests(enabled, rulesWithTests),
@@ -104,7 +115,7 @@ void test("parser rejections do not count as ESLint rule behavior", () => {
             IMPORT +
                 'testParserRejection("no-octal", "const n = 071;", "const n = 0o71;");',
         ),
-        { rules: [], parserRestrictions: ["no-octal"] },
+        { rules: [], parserRestrictions: ["no-octal"], syntaxSelectors: [] },
     );
 });
 
@@ -138,4 +149,31 @@ void test("individual rule registrations require both rejection and acceptance c
     assert.doesNotThrow(() => {
         requireRuleCases("no-debugger", [REJECTED, ACCEPTED]);
     });
+});
+
+void test("syntax coverage counts only paired selector-specific registrations", () => {
+    const source =
+        'import { testSyntaxRestriction as restriction } from "../../harness/lint-adapter.ts";';
+    assert.deepEqual(
+        registeredRuleTests(
+            source + 'restriction("ImportExpression", [{ name: "case" }]);',
+        ),
+        {
+            rules: ["no-restricted-syntax"],
+            parserRestrictions: [],
+            syntaxSelectors: ["ImportExpression"],
+        },
+    );
+    assert.deepEqual(
+        registeredRuleTests(source + 'restriction("ImportExpression", []);')
+            .syntaxSelectors,
+        [],
+    );
+    assert.deepEqual(
+        registeredRuleTests(
+            IMPORT +
+                'testLintExamples("no-restricted-syntax", "import(x)", "f()");',
+        ).syntaxSelectors,
+        [],
+    );
 });

@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ESLint, type Linter } from "eslint";
 import type { ReadonlyDeep } from "type-fest";
-import { requireRuleCases } from "./rule-coverage.ts";
+import {
+    requireRuleCases,
+    syntaxRestrictionSettings,
+} from "./rule-coverage.ts";
 import {
     offsetFromLocation,
     runCases,
@@ -33,6 +36,7 @@ function configuredRuleIds(config: unknown): readonly string[] {
 async function createSingleRuleLinter(
     ruleId: string,
     checkUnusedDisables = false,
+    selector?: string,
 ): Promise<ESLint> {
     const engine = new ESLint({ ignore: false });
     const config: unknown = await engine.calculateConfigForFile(SNIPPET_PATH);
@@ -40,6 +44,13 @@ async function createSingleRuleLinter(
     if (!rules.includes(ruleId)) {
         throw new Error(`${ruleId} is not configured in eslint.config.js`);
     }
+    const restrictionSettings =
+        selector === undefined ? undefined : syntaxRestrictionSettings(config);
+    const restriction = restrictionSettings?.restrictions.find(
+        (option) => option.selector === selector,
+    );
+    if (selector !== undefined && restriction === undefined)
+        throw new Error(`Syntax selector is not configured: ${selector}`);
     return new ESLint({
         ignore: false,
         overrideConfig: [
@@ -56,11 +67,23 @@ async function createSingleRuleLinter(
                         },
                     },
                 },
-                rules: Object.fromEntries(
-                    rules
-                        .filter((rule) => rule !== ruleId)
-                        .map((rule) => [rule, "off" as const]),
-                ),
+                rules: {
+                    ...Object.fromEntries(
+                        rules
+                            .filter((rule) => rule !== ruleId)
+                            .map((rule) => [rule, "off" as const]),
+                    ),
+                    // A rejection must come from the declared selector.
+                    ...(restriction === undefined ||
+                    restrictionSettings === undefined
+                        ? {}
+                        : {
+                              "no-restricted-syntax": [
+                                  restrictionSettings.severity,
+                                  restriction,
+                              ],
+                          }),
+                },
             },
         ],
     });
@@ -88,6 +111,18 @@ function toActualDiagnostic(
 export function testLintRule(ruleId: string, cases: readonly TestCase[]): void {
     requireRuleCases(ruleId, cases);
     runLintCases(ruleId, cases, createSingleRuleLinter(ruleId));
+}
+
+export function testSyntaxRestriction(
+    selector: string,
+    cases: readonly TestCase[],
+): void {
+    requireRuleCases("no-restricted-syntax", cases);
+    runLintCases(
+        `no-restricted-syntax: ${selector}`,
+        cases,
+        createSingleRuleLinter("no-restricted-syntax", false, selector),
+    );
 }
 
 // Unused-disable reporting is a linter option, not a rule. Keep the assertion rule

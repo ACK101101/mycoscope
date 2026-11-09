@@ -4,7 +4,53 @@ import type { TestCase } from "./test-case.ts";
 
 export interface RuleTestRegistrations {
     readonly rules: readonly string[];
+    readonly syntaxSelectors: readonly string[];
     readonly parserRestrictions: readonly string[];
+}
+
+export interface SyntaxRestriction {
+    readonly selector: string;
+    readonly message?: string;
+}
+
+export interface SyntaxRestrictionSettings {
+    readonly severity: 1 | 2;
+    readonly restrictions: readonly SyntaxRestriction[];
+}
+
+export function syntaxRestrictionSettings(
+    config: unknown,
+): SyntaxRestrictionSettings {
+    assert.ok(
+        typeof config === "object" && config !== null && "rules" in config,
+    );
+    assert.ok(typeof config.rules === "object" && config.rules !== null);
+    const setting: unknown = Object.entries(config.rules).find(
+        ([rule]) => rule === "no-restricted-syntax",
+    )?.[1];
+    assert.ok(
+        Array.isArray(setting),
+        "no-restricted-syntax must be configured",
+    );
+    const values: readonly unknown[] = setting;
+    const severity = values[0];
+    assert.ok(
+        severity === 1 || severity === 2,
+        "no-restricted-syntax must be enabled",
+    );
+    const restrictions = values.slice(1).map((option) => {
+        if (typeof option === "string") return { selector: option };
+        assert.ok(
+            typeof option === "object" &&
+                option !== null &&
+                "selector" in option,
+        );
+        assert.ok(typeof option.selector === "string");
+        if (!("message" in option)) return { selector: option.selector };
+        assert.ok(typeof option.message === "string");
+        return { selector: option.selector, message: option.message };
+    });
+    return { severity, restrictions };
 }
 
 export function requireRuleCases(
@@ -33,6 +79,7 @@ export function registeredRuleTests(text: string): RuleTestRegistrations {
     const imports: Map<string, string> = new Map<string, string>();
     const constants: Map<string, string> = new Map<string, string>();
     const rules: Set<string> = new Set<string>();
+    const syntaxSelectors: Set<string> = new Set<string>();
     const parserRestrictions: Set<string> = new Set<string>();
     const stringValue = (node: ts.Node | undefined): string | undefined => {
         if (node === undefined) return undefined;
@@ -76,26 +123,34 @@ export function registeredRuleTests(text: string): RuleTestRegistrations {
         const call = statement.expression;
         if (!ts.isIdentifier(call.expression)) continue;
         const helper = imports.get(call.expression.text);
-        const ruleId = stringValue(call.arguments[0]);
-        if (ruleId === undefined) continue;
-        if (helper === "testLintRule") {
+        const registrationId = stringValue(call.arguments[0]);
+        if (registrationId === undefined) continue;
+        if (helper === "testLintRule" || helper === "testSyntaxRestriction") {
             const cases = call.arguments[1];
             if (
                 cases !== undefined &&
                 ts.isArrayLiteralExpression(cases) &&
                 cases.elements.length > 0
-            )
-                rules.add(ruleId);
+            ) {
+                if (helper === "testSyntaxRestriction") {
+                    syntaxSelectors.add(registrationId);
+                    rules.add("no-restricted-syntax");
+                } else rules.add(registrationId);
+            }
         }
         if (helper === "testLintExamples" || helper === "testParserRejection") {
             const rejected = call.arguments[1];
             const accepted = call.arguments[2];
             if (rejected === undefined || accepted === undefined) continue;
-            if (helper === "testLintExamples") rules.add(ruleId);
-            else parserRestrictions.add(ruleId);
+            if (helper === "testLintExamples") rules.add(registrationId);
+            else parserRestrictions.add(registrationId);
         }
     }
-    return { rules: [...rules], parserRestrictions: [...parserRestrictions] };
+    return {
+        rules: [...rules],
+        parserRestrictions: [...parserRestrictions],
+        syntaxSelectors: [...syntaxSelectors],
+    };
 }
 
 export function missingRuleTests(
