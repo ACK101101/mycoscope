@@ -108,6 +108,16 @@ void test("parser rejections do not count as ESLint rule behavior", () => {
     );
 });
 
+void test("paired source expressions register without evaluating test source", () => {
+    assert.deepEqual(
+        registeredRuleTests(
+            IMPORT +
+                'const PREFIX = "export "; testLintExamples("no-debugger", PREFIX + "debugger;", `${PREFIX}const n = 1;`);',
+        ).rules,
+        ["no-debugger"],
+    );
+});
+
 const REJECTED: TestCase = {
     name: "reject",
     code: "debugger;",

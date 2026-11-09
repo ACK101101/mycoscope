@@ -88,8 +88,8 @@ export function registeredRuleTests(text: string): RuleTestRegistrations {
                 rules.add(ruleId);
         }
         if (helper === "testLintExamples" || helper === "testParserRejection") {
-            const rejected = stringValue(call.arguments[1]);
-            const accepted = stringValue(call.arguments[2]);
+            const rejected = call.arguments[1];
+            const accepted = call.arguments[2];
             if (rejected === undefined || accepted === undefined) continue;
             if (helper === "testLintExamples") rules.add(ruleId);
             else parserRestrictions.add(ruleId);
