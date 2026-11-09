@@ -31,6 +31,10 @@ void test("a missing ESLint result fails instead of passing an acceptance case",
                     name: "valid source",
                     code: "export const n = 1;",
                     expect: [],
+                }, {
+                    name: "invalid source",
+                    code: "1 == 1;",
+                    expect: [{ id: "eqeqeq", line: 1, column: 3, text: "==" }],
                 }]);
             `,
         ],
