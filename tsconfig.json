@@ -1,40 +1,58 @@
 {
-  // Visit https://aka.ms/tsconfig to read more about this file
+  // These options restrict code patterns so the graph builder can resolve dependencies.
+  // Use relative imports. paths and baseUrl aliases would require the builder to read
+  // TypeScript configuration to resolve imports.
   "compilerOptions": {
-    // File Layout
-    "rootDir": "./src",
-    "outDir": "./dist",
+    // File layout
+    // Check source and tests without emitting files. tsconfig.build.json emits src only.
+    "noEmit": true,
+    "allowImportingTsExtensions": true, // Tests use .ts imports under tsx. The build disables this option.
 
-    // Environment Settings
-    // See also https://aka.ms/tsconfig/module
-    "module": "nodenext",
+    // Environment
+    "module": "nodenext", // Resolve modules using Node rules.
     "target": "esnext",
-    "lib": ["esnext"],
-    "types": ["node"],
+    "lib": ["esnext"], // Exclude browser globals such as window and document.
+    "types": ["node"], // Include Node globals without automatically including other @types packages.
 
-    // Other Outputs
-    "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
+    // Outputs
+    "sourceMap": true, // Map generated JavaScript back to source when debugging.
+    "declaration": true, // Emit type declarations for consumers.
+    "declarationMap": true, // Let editors navigate from declarations to source.
 
-    // Stricter Typechecking Options
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
+    // Type strictness
+    // Set strictness options individually so TypeScript upgrades do not enable new
+    // strict checks until we choose them.
+    "noImplicitAny": true, // Report inferred any when TypeScript cannot determine a type.
+    "strictNullChecks": true, // Require null and undefined to be handled explicitly.
+    "strictFunctionTypes": true, // Check function parameter compatibility, except for methods and constructors.
+    "strictBindCallApply": true, // Check bind, call, and apply arguments against the function signature.
+    "strictPropertyInitialization": true, // Require non-optional fields to be initialized unless explicitly asserted.
+    "strictBuiltinIteratorReturn": true, // Use undefined instead of any for built-in iterator completion values.
+    "noImplicitThis": true, // Report this expressions that would have type any.
+    "useUnknownInCatchVariables": true, // Require narrowing caught values before using them.
+    "alwaysStrict": true, // Parse and emit code in JavaScript strict mode.
+    "noUncheckedIndexedAccess": true, // Include undefined in unchecked index access results.
+    "exactOptionalPropertyTypes": true, // An optional property accepts undefined only if its type includes undefined.
+    "noPropertyAccessFromIndexSignature": true, // Use bracket access for properties known only through an index signature.
 
-    // Style Options
-    "noImplicitReturns": true,
-    "noImplicitOverride": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "noPropertyAccessFromIndexSignature": true,
+    // Dead and ambiguous code
+    "noImplicitReturns": true, // Report functions that return a value on only some paths.
+    "noImplicitOverride": true, // Require override on members that override a base class member.
+    "noUnusedLocals": true, // Report unused local declarations.
+    "noUnusedParameters": true, // Report unused parameters unless their names start with _.
+    "noFallthroughCasesInSwitch": true, // Reject non-empty switch cases that fall through.
+    "allowUnreachableCode": false, // Report unreachable code as an error.
+    "allowUnusedLabels": false, // Report unused labels as errors.
 
-    // Recommended Options
-    "strict": true,
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "noUncheckedSideEffectImports": true,
-    "moduleDetection": "force",
-    "skipLibCheck": true,
-  }
+    // Module boundaries
+    "verbatimModuleSyntax": true, // Require import type for imports used only as types.
+    "isolatedModules": true, // Reject constructs that require cross-file information to transpile.
+    "noUncheckedSideEffectImports": true, // Report side-effect imports whose modules cannot be resolved.
+    "moduleDetection": "force", // Treat every source file as a module to prevent shared script globals.
+    "erasableSyntaxOnly": true, // Reject TypeScript syntax that requires runtime code generation.
+
+    // Performance
+    "skipLibCheck": true // Skip checking declaration files, including dependency declarations.
+  },
+  "include": ["src", "scripts", "tests", "eslint-rules"]
 }

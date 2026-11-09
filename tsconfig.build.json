@@ -1,0 +1,11 @@
+{
+  // Emit src to dist. Inherit checking options from tsconfig.json.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src", // Preserve paths relative to src in the build output.
+    "outDir": "./dist",
+    "noEmit": false,
+    "allowImportingTsExtensions": false // Build imports must resolve to emitted JavaScript files.
+  },
+  "include": ["src"]
+}
