@@ -9,9 +9,9 @@ import {
 } from "../harness/rule-coverage.ts";
 import type { TestCase } from "../harness/test-case.ts";
 
-// TypeScript rejects these constructs before ESLint can visit them. Keep their
-// parser rejection/control tests separate from evidence that an ESLint rule ran.
-const PARSER_PROTECTED_RULES = ["no-octal", "no-nonoctal-decimal-escape"];
+// The corresponding ESLint rules are disabled because TypeScript's parser rejects
+// these constructs. Parser tests must not satisfy enabled-rule coverage.
+const PARSER_RESTRICTIONS = ["no-octal", "no-nonoctal-decimal-escape"];
 
 void test("every enabled ESLint rule has rejection and acceptance coverage", async () => {
     const directory = "tests/eslint/individual-rules";
@@ -41,22 +41,19 @@ void test("every enabled ESLint rule has rejection and acceptance coverage", asy
         },
     );
     assert.deepEqual(
-        missingRuleTests(enabled, [
-            ...rulesWithTests,
-            ...PARSER_PROTECTED_RULES,
-        ]),
+        missingRuleTests(enabled, rulesWithTests),
         [],
         "Enabled rules without rejection/acceptance tests",
     );
     assert.deepEqual(
         [...parserTests].sort(),
-        [...PARSER_PROTECTED_RULES].sort(),
-        "Each parser exception needs explicit rejection and acceptance tests",
+        [...PARSER_RESTRICTIONS].sort(),
+        "Each parser restriction needs rejection and acceptance tests",
     );
-    for (const rule of PARSER_PROTECTED_RULES)
+    for (const rule of PARSER_RESTRICTIONS)
         assert.ok(
-            enabled.includes(rule),
-            `Remove stale parser exception for ${rule}`,
+            !enabled.includes(rule),
+            `${rule} must remain disabled; parser rejection is not rule coverage`,
         );
 });
 

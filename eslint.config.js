@@ -105,6 +105,9 @@ export default defineConfig(
             "no-sequences": "error", // Reject comma expressions that combine operations.
             "no-return-assign": "error", // Reject unparenthesized assignments in return statements.
             // Graph completeness: ban what the builder can't resolve
+            // TypeScript's parser rejects these constructs before ESLint rules can run.
+            "no-octal": "off",
+            "no-nonoctal-decimal-escape": "off",
             "no-restricted-syntax": ["error", ...unresolvableSyntax],
             "no-eval": "error", // Reject code execution from strings.
             "no-new-func": "error", // Reject code execution from strings.
