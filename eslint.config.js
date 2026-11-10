@@ -3,6 +3,7 @@ import eslint from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
 import eslintComments from "@eslint-community/eslint-plugin-eslint-comments";
+import unicorn from "eslint-plugin-unicorn";
 
 // Restrict syntax that complicates dependency resolution for the graph builder.
 // The builder must record an unresolved edge when it cannot resolve a dependency.
@@ -53,6 +54,7 @@ export default defineConfig(
         linterOptions: { reportUnusedDisableDirectives: "error" },
         plugins: {
             "@eslint-community/eslint-comments": eslintComments,
+            unicorn,
         },
         languageOptions: {
             parserOptions: {
@@ -104,6 +106,34 @@ export default defineConfig(
             "no-bitwise": "error", // Require an explicit exception for bitwise operations.
             "no-sequences": "error", // Reject comma expressions that combine operations.
             "no-return-assign": "error", // Reject unparenthesized assignments in return statements.
+            // Require explicit checks for strings, numbers, and nullable objects.
+            "@typescript-eslint/strict-boolean-expressions": [
+                "error",
+                {
+                    allowString: false,
+                    allowNumber: false,
+                    allowNullableObject: false,
+                },
+            ],
+            // Require loops even for simple reductions such as summing an array.
+            "unicorn/no-array-reduce": [
+                "error",
+                { allowSimpleOperations: false },
+            ],
+            "unicorn/no-for-each": "error",
+            // An explicit callback avoids unintended arguments, such as the index in `.map(parseInt)`.
+            "unicorn/no-array-callback-reference": "error",
+            "unicorn/no-negated-condition": "error",
+            "unicorn/no-lonely-if": "error",
+            "unicorn/no-useless-else": "error",
+            // Allow three nested calls; deeper expressions need named intermediate values.
+            "unicorn/max-nested-calls": "error",
+            "unicorn/no-unreadable-array-destructuring": "error",
+            "unicorn/no-unreadable-object-destructuring": "error",
+            "unicorn/no-unreadable-iife": "error",
+            "unicorn/no-unreadable-new-expression": "error",
+            "unicorn/no-unreadable-for-of-expression": "error",
+
             // Graph completeness: ban what the builder can't resolve
             // TypeScript's parser rejects these constructs before ESLint rules can run.
             "no-octal": "off",

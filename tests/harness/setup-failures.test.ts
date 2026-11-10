@@ -6,11 +6,14 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 const TSX_LOADER = import.meta.resolve("tsx");
-const COMPILER_ADAPTER = new URL("./tsc-adapter.ts", import.meta.url).href;
-const LINT_ADAPTER = new URL("./lint-adapter.ts", import.meta.url).href;
+const COMPILER_ADAPTER = import.meta.resolve("./tsc-adapter.ts");
+const LINT_ADAPTER = import.meta.resolve("./lint-adapter.ts");
 // Child processes need normal test output rather than the parent runner's binary protocol.
-const CHILD_ENV = { ...process.env };
-delete CHILD_ENV["NODE_TEST_CONTEXT"];
+const CHILD_ENV = Object.fromEntries(
+    Object.entries(process.env).filter(
+        ([name]) => name !== "NODE_TEST_CONTEXT",
+    ),
+);
 
 // Run each setup failure in a child process so its test registrations and working
 // directory cannot affect the other harness tests.
