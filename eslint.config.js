@@ -106,7 +106,7 @@ export default defineConfig(
             "no-bitwise": "error", // Require an explicit exception for bitwise operations.
             "no-sequences": "error", // Reject comma expressions that combine operations.
             "no-return-assign": "error", // Reject unparenthesized assignments in return statements.
-            // TRIAL (this repo only, not in the export): conditions must be booleans, not truthy/falsy.
+            // Require explicit checks for strings, numbers, and nullable objects.
             "@typescript-eslint/strict-boolean-expressions": [
                 "error",
                 {
@@ -115,21 +115,20 @@ export default defineConfig(
                     allowNullableObject: false,
                 },
             ],
-            // Opt-in, rule by rule: we never spread unicorn's preset.
-            // The default exempts "simple" callbacks such as `(a, b) => a + b`; we want those as loops too.
+            // Require loops even for simple reductions such as summing an array.
             "unicorn/no-array-reduce": [
                 "error",
                 { allowSimpleOperations: false },
             ],
-            "unicorn/no-for-each": "error", // for...of can break, return and await; forEach can't
-            // `.map(parseInt)` type-checks but passes the index as the radix; name the call instead.
+            "unicorn/no-for-each": "error",
+            // An explicit callback avoids unintended arguments, such as the index in `.map(parseInt)`.
             "unicorn/no-array-callback-reference": "error",
-            "unicorn/no-negated-condition": "error", // `if (!a) x else y` -> `if (a) y else x`
-            "unicorn/no-lonely-if": "error", // `if (a) { if (b) … }` -> `if (a && b)`
-            "unicorn/no-useless-else": "error", // no `else` after return/throw: the rest is the else
-            // Default depth 3: `f(g(h(x)))` is fine, one more is a named intermediate.
+            "unicorn/no-negated-condition": "error",
+            "unicorn/no-lonely-if": "error",
+            "unicorn/no-useless-else": "error",
+            // Allow three nested calls; deeper expressions need named intermediate values.
             "unicorn/max-nested-calls": "error",
-            "unicorn/no-unreadable-array-destructuring": "error", // `const [,, third] = xs`
+            "unicorn/no-unreadable-array-destructuring": "error",
             "unicorn/no-unreadable-object-destructuring": "error",
             "unicorn/no-unreadable-iife": "error",
             "unicorn/no-unreadable-new-expression": "error",
