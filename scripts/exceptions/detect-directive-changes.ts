@@ -161,7 +161,7 @@ function commentException(
                 ? ""
                 : rest.slice(separator.index + separator[0].length);
     }
-    const offset = eslint !== null || !block ? 0 : lastLineStart;
+    const offset = eslint === null && block ? lastLineStart : 0;
     const position =
         comment.pos + 2 + offset + (hit?.[0].indexOf(directive) ?? 0);
     return {
@@ -181,7 +181,8 @@ export function findExceptionChanges(
     const revisions: readonly SourceRevision[] = ["head", "base"];
     const changedLines = changedLinesByRevision(diff);
     for (const revision of revisions) {
-        for (const [file, lines] of changedLines[revision]) {
+        const changedFiles = changedLines[revision];
+        for (const [file, lines] of changedFiles) {
             const source = ts.createSourceFile(
                 file,
                 readSource(file, revision),
