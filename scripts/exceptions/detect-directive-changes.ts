@@ -51,9 +51,13 @@ function changedLinesByRevision(
         file: string,
         line: number,
     ): void => {
-        const lines = files[revision].get(file) ?? new Set<number>();
-        lines.add(line);
-        files[revision].set(file, lines);
+        const lines = files[revision].get(file);
+        if (lines !== undefined) {
+            lines.add(line);
+            return;
+        }
+        const addedLines: Mut<Set<number>> = new Set([line]);
+        files[revision].set(file, addedLines);
     };
     for (const raw of diff.split("\n")) {
         const hunk = HUNK.exec(raw);

@@ -59,7 +59,7 @@ async function publish(
                         }: {
                             body: string;
                         }) => {
-                            const comment = {
+                            const comment: Mut<Comment> = {
                                 id: comments.length + 1,
                                 user: { login: BOT },
                                 body: newBody,
