@@ -14,6 +14,26 @@ function report(source: string, file = "src/a.ts"): ExceptionChange[] {
     return findExceptionChanges(addedFile(file, source), () => source);
 }
 
+void test("reports wiring exceptions in comments but not quoted examples", () => {
+    const directive = "@mycoscope-" + "exception";
+    assert.deepEqual(
+        report(`// ${directive} unresolved-wiring -- plugin owns selection`),
+        [
+            {
+                revision: "head",
+                file: "src/a.ts",
+                line: 1,
+                directive,
+                reason: "plugin owns selection",
+            },
+        ],
+    );
+    assert.deepEqual(
+        report(`const text = "// ${directive} unresolved-wiring -- example";`),
+        [],
+    );
+});
+
 void test("reports effective Effect overrides in comments and literals", () => {
     const marker = "@effect-" + "diagnostics";
     for (const source of [

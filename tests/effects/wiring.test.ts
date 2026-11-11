@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
 import ts from "typescript";
-import type { Mut } from "../../src/mutation.js";
 import { analyze, RULES } from "../../src/effects/analyze.js";
 import type { Policy, Report } from "../../src/effects/model.js";
 
@@ -143,7 +142,7 @@ void test("providing erases R without erasing the layer and consumer edges", () 
     assert.deepEqual(report.issues, []);
     const entry = report.nodes.find((node) => node.label === "main");
     assert.ok(entry !== undefined);
-    const reached: Mut<Set<string>> = new Set([entry.id]);
+    const reached = new Set<string>([entry.id]);
     let remaining = report.nodes.length;
     while (remaining > 0) {
         remaining -= 1;
@@ -449,7 +448,7 @@ void test("method receivers keep their initialization dependencies reachable", (
         { wiringRoots: [root] },
     );
     assert.deepEqual(report.issues, []);
-    const reached: Mut<Set<string>> = new Set(report.wiringRoots);
+    const reached = new Set<string>(report.wiringRoots);
     let previous = -1;
     while (previous !== reached.size) {
         previous = reached.size;
