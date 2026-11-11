@@ -1,3 +1,12 @@
+# Implementation and testing
+
+- Treat implementation choices as replaceable. Do not preserve compatibility, abstractions, or historical structure without a current requirement.
+- Before extending a subsystem, consider whether removing or replacing it would produce a smaller, clearer implementation.
+- Preserve intentional behavior through tests. Update tests when requirements change; avoid assertions tied only to internal structure.
+- Use upstream tools before adding custom policy or analysis. Document what custom checks establish and where they fail.
+- Keep tests fast, deterministic, and independent. Exercise real integrations where substitution could hide a meaningful failure.
+- Add infrastructure and abstraction to solve a demonstrated problem. Remove obsolete implementation and its supporting machinery together.
+
 # Comments and names
 
 Apply these conventions to code and configuration in this repository.
