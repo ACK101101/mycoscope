@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+import { assertBehaviorEqual } from "./behavior.ts";
 import { describe, test } from "node:test";
 
 // Both adapters use this format. `id` is an ESLint rule name or a TypeScript
@@ -71,16 +71,16 @@ export function assertDiagnosticsMatch(
     actual: readonly ActualDiagnostic[],
     expected: readonly ExpectedDiagnostic[],
 ): void {
-    assert.deepEqual(
+    assertBehaviorEqual(
         actual.map((diagnostic) => diagnosticIdentity(diagnostic)),
         expected.map((diagnostic) => diagnosticIdentity(diagnostic)),
     );
     for (const [i, want] of expected.entries()) {
         if (want.severity !== undefined) {
-            assert.equal(actual[i]?.severity, want.severity);
+            assertBehaviorEqual(actual[i]?.severity ?? null, want.severity);
         }
         if (want.message !== undefined) {
-            assert.equal(actual[i]?.message, want.message);
+            assertBehaviorEqual(actual[i]?.message ?? null, want.message);
         }
     }
 }

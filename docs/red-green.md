@@ -1,8 +1,8 @@
 # Frozen RED/GREEN contracts
 
-`npm test` runs the fast rule/unit suite in one process. `npm run test:integration` runs CLI, upstream diagnostic and Git-history integration checks; `npm run test:all` runs both serially. CI requires both through `npm run test:ci`, with at most two test processes. Static suite entries are checked against the discovered test inventory, so adding a test without registering it fails verification.
+`npm test` runs every test through Node's shared-process runner, locally and in CI. Tests that need isolation launch subprocesses.
 
-`test-budgets.json` sets soft budgets of 100 ms per test and 10 seconds for the complete run. The runtime reporter emits local warnings and CI annotations without changing pass/fail status. Setup time is included in the overall run budget. Integration runs have the same warning budgets; slower integrations remain required. Contract replay is also serial, with a 768 MiB V8 heap limit per process, a three-minute phase timeout and bounded output. It runs only on POSIX hosts (macOS/Linux).
+Contract replay is serial, with a 768 MiB V8 heap limit per process, a three-minute phase timeout and bounded output. It runs only on POSIX hosts (macOS/Linux).
 
 ## One pair, two reviews
 

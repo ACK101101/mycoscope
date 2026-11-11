@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+import { assertBehaviorEqual } from "./behavior.ts";
 import { test } from "node:test";
 import { ESLint, type Linter } from "eslint";
 import type { ReadonlyDeep } from "type-fest";
@@ -40,16 +40,15 @@ async function createSingleRuleLinter(
     const engine = new ESLint({ ignore: false });
     const config: unknown = await engine.calculateConfigForFile(SNIPPET_PATH);
     const rules = configuredRuleIds(config);
-    if (!rules.includes(ruleId)) {
-        throw new Error(`${ruleId} is not configured in eslint.config.js`);
-    }
     const restrictionSettings =
-        selector === undefined ? undefined : syntaxRestrictionSettings(config);
+        selector === undefined || !rules.includes(ruleId)
+            ? undefined
+            : syntaxRestrictionSettings(config);
     const restriction = restrictionSettings?.restrictions.find(
         (option) => option.selector === selector,
     );
-    if (selector !== undefined && restriction === undefined)
-        throw new Error(`Syntax selector is not configured: ${selector}`);
+    // During baseline replay, an absent rule produces no target diagnostic.
+    // The behavior assertion must detect missing enforcement rather than a setup error.
     return new ESLint({
         ignore: false,
         overrideConfig: [
@@ -65,15 +64,17 @@ async function createSingleRuleLinter(
                             .filter((rule) => rule !== ruleId)
                             .map((rule) => [rule, "off" as const]),
                     ),
-                    // A rejection must come from the declared selector.
-                    ...(restriction === undefined ||
-                    restrictionSettings === undefined
+                    ...(selector === undefined
                         ? {}
                         : {
-                              "no-restricted-syntax": [
-                                  restrictionSettings.severity,
-                                  restriction,
-                              ],
+                              "no-restricted-syntax":
+                                  restriction === undefined ||
+                                  restrictionSettings === undefined
+                                      ? "off"
+                                      : [
+                                            restrictionSettings.severity,
+                                            restriction,
+                                        ],
                           }),
                 },
             },
@@ -137,6 +138,7 @@ function runLintCases(
 ): void {
     runCases(suite, cases, async (code) => {
         const result = await lintSource(engine, code);
+        requireParsed(result.messages);
         return result.messages.map(
             (message: ReadonlyDeep<Linter.LintMessage>) =>
                 toActualDiagnostic(code, message),
@@ -163,13 +165,14 @@ export function testLintExamples(
     accepted: string,
 ): void {
     testLintPair(ruleId, rejected, accepted, (messages) => {
-        assert.ok(
+        assertBehaviorEqual(
             messages.length > 0,
+            true,
             `${ruleId} did not reject its violation`,
         );
-        assert.ok(
+        assertBehaviorEqual(
             messages.every((message) => message.ruleId === ruleId),
-            JSON.stringify(messages),
+            true,
         );
     });
 }
@@ -180,14 +183,21 @@ export function testParserRejection(
     rejected: string,
     accepted: string,
 ): void {
-    testLintPair(ruleId, rejected, accepted, (messages) => {
-        assert.ok(
-            messages.some(
-                (message) => message.fatal === true && message.ruleId === null,
-            ),
-            JSON.stringify(messages),
-        );
-    });
+    testLintPair(
+        ruleId,
+        rejected,
+        accepted,
+        (messages) => {
+            assertBehaviorEqual(
+                messages.some(
+                    (message) =>
+                        message.fatal === true && message.ruleId === null,
+                ),
+                true,
+            );
+        },
+        true,
+    );
 }
 
 function testLintPair(
@@ -197,12 +207,25 @@ function testLintPair(
     assertRejected: (
         messages: readonly ReadonlyDeep<Linter.LintMessage>[],
     ) => void,
+    parserRejection = false,
 ): void {
     const engine = createSingleRuleLinter(ruleId);
     void test(`${ruleId} rejects its violation`, async () => {
-        assertRejected((await lintSource(engine, rejected)).messages);
+        const result = await lintSource(engine, rejected);
+        if (!parserRejection) requireParsed(result.messages);
+        assertRejected(result.messages);
     });
     void test(`${ruleId} accepts its control`, async () => {
-        assert.deepEqual((await lintSource(engine, accepted)).messages, []);
+        const result = await lintSource(engine, accepted);
+        requireParsed(result.messages);
+        assertBehaviorEqual(result.messages, []);
     });
+}
+
+function requireParsed(
+    messages: readonly ReadonlyDeep<Linter.LintMessage>[],
+): void {
+    const fatal = messages.find((message) => message.fatal === true);
+    if (fatal !== undefined)
+        throw new Error(`Parser setup failure: ${fatal.message}`);
 }
