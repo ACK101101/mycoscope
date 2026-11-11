@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: lts/*
           cache: npm
-      - run: npm ci
+      - run: npm ci --prefer-offline
       - name: Build comment from PR diff
         run: npx tsx scripts/exceptions/report-cli.ts "origin/$BASE_REF" > comment.md
       - name: Post or update the comment
