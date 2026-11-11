@@ -20,6 +20,10 @@ Test files register ordinary `test(...)` callbacks and keep inputs beside their
 assertions. Adapters execute tools and normalize results; they do not register
 tests. Keep repetitive setup in `tests/harness/`.
 
+Typed fixtures reuse a TypeScript language service and parsed dependency files.
+Each case updates its sources and computes diagnostics; diagnostic results are
+not cached. Regression tests compare reused projects with fresh programs.
+
 ## Readonly inputs
 
 Function parameters use readonly types by default. ESLint's
