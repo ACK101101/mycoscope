@@ -1,8 +1,9 @@
+import { createProject } from "../harness/project.ts";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, symlinkSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { test } from "node:test";
+import { test, after } from "node:test";
 import ts from "typescript";
 import { analyze, RULES } from "../../src/effects/analyze.js";
 import type { Findings, Policy } from "../../src/effects/model.js";
@@ -11,37 +12,32 @@ const IMPORT = 'import { Effect, Layer, Context, Clock } from "effect";\n';
 const SERVICE =
     'class Reader extends Context.Service<Reader, { read: () => Effect.Effect<string, never, never> }>()("Reader") {}\n';
 
+const directory = mkdtempSync(join(tmpdir(), "mycoscope-wiring-"));
+symlinkSync(resolve("node_modules"), join(directory, "node_modules"), "dir");
+writeFileSync(join(directory, "package.json"), '{"type":"module"}');
+const project = createProject(directory, "main.ts", {
+    strict: true,
+    target: ts.ScriptTarget.ESNext,
+    module: ts.ModuleKind.NodeNext,
+    skipLibCheck: true,
+});
+after(() => {
+    project.dispose();
+    rmSync(directory, { recursive: true, force: true });
+});
+
 function check(
     code: string,
     options: Partial<Pick<Policy, "wiringRoots" | "adapters">> = {},
     extra: Readonly<Record<string, string>> = {},
 ): Findings {
-    const directory = mkdtempSync(join(tmpdir(), "mycoscope-wiring-"));
-    try {
-        symlinkSync(
-            resolve("node_modules"),
-            join(directory, "node_modules"),
-            "dir",
-        );
-        writeFileSync(join(directory, "package.json"), '{"type":"module"}');
-        writeFileSync(join(directory, "main.ts"), IMPORT + code);
-        for (const [name, source] of Object.entries(extra))
-            writeFileSync(join(directory, name), source);
-        const program = ts.createProgram([join(directory, "main.ts")], {
-            strict: true,
-            target: ts.ScriptTarget.ESNext,
-            module: ts.ModuleKind.NodeNext,
-            skipLibCheck: true,
-        });
-        return analyze(program, {
-            rootDirectory: directory,
-            wiringRoots: [],
-            adapters: [],
-            ...options,
-        });
-    } finally {
-        rmSync(directory, { recursive: true, force: true });
-    }
+    const program = project.program({ "main.ts": IMPORT + code, ...extra });
+    return analyze(program, {
+        rootDirectory: project.directory,
+        wiringRoots: [],
+        adapters: [],
+        ...options,
+    });
 }
 
 const root = { module: "main.ts", export: "main" };

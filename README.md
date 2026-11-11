@@ -29,6 +29,10 @@ Those files remain runnable individually with the command above.
 Focused runs with `--test-name-pattern`, `--test-skip-pattern`, or `--test-only`
 omit the suite-wide coverage check.
 
+Typed fixtures reuse a TypeScript language service and parsed dependency files.
+Each case updates its sources and computes diagnostics; diagnostic results are
+not cached. Regression tests compare reused projects with fresh programs.
+
 ## Readonly inputs
 
 Function parameters use readonly types by default. ESLint's
