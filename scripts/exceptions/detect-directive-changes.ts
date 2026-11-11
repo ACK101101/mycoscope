@@ -220,15 +220,30 @@ export function findExceptionChanges(
             // Upstream Effect overrides apply even inside literals, so scan source text.
             if (revision === "head") {
                 for (const override of effectOverrides(source.text)) {
-                    const firstLine = source.getLineAndCharacterOfPosition(override.index).line + 1;
-                    const lastLine = source.getLineAndCharacterOfPosition(override.index + override.length - 1).line + 1;
-                    if (![...lines].some((line) => line >= firstLine && line <= lastLine)) continue;
+                    const firstLine =
+                        source.getLineAndCharacterOfPosition(override.index)
+                            .line + 1;
+                    const lastLine =
+                        source.getLineAndCharacterOfPosition(
+                            override.index + override.length - 1,
+                        ).line + 1;
+                    if (
+                        ![...lines].some(
+                            (line) => line >= firstLine && line <= lastLine,
+                        )
+                    )
+                        continue;
                     found.push({
                         revision,
                         file,
                         line: firstLine,
                         directive: override.directive,
-                        reason: override.rest.split(" -- ").slice(1).join(" -- ").replace(/\*\/\s*$/, "").trim(),
+                        reason: override.rest
+                            .split(" -- ")
+                            .slice(1)
+                            .join(" -- ")
+                            .replace(/\*\/\s*$/, "")
+                            .trim(),
                     });
                 }
             }

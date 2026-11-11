@@ -24,16 +24,22 @@ void test("reports effective Effect overrides in comments and literals", () => {
     ]) {
         const changes = report(source);
         assert.equal(changes.length, 1);
-        assert.equal(changes[0]?.directive, `${marker}-next-line`);
-        assert.match(changes[0]?.reason ?? "", /callback owns execution/);
+        const change = changes[0];
+        assert.ok(change !== undefined);
+        assert.equal(change.directive, `${marker}-next-line`);
+        assert.match(change.reason, /callback owns execution/);
     }
 });
 
 void test("reports an Effect override when only its continuation line changes", () => {
     const marker = "@effect-" + "diagnostics";
-    const source = `/* ${marker}\n effect/floatingEffect:off */`;
-    const diff = "+++ b/src/a.ts\n@@ -2 +2 @@\n- effect/floatingEffect:error */\n+ effect/floatingEffect:off */";
-    assert.equal(findExceptionChanges(diff, () => source)[0]?.directive, marker);
+    const source = `/* ${marker}\neffect/floatingEffect:off */`;
+    const diff =
+        "+++ b/src/a.ts\n@@ -2 +2 @@\n-effect/floatingEffect:error */\n+effect/floatingEffect:off */";
+    assert.equal(
+        findExceptionChanges(diff, () => source)[0]?.directive,
+        marker,
+    );
 });
 
 void test("finds added directives with their source location and reason", () => {
