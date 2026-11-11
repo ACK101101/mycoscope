@@ -1,3 +1,4 @@
+import type { Mut } from "../../src/mutation.js";
 import assert from "node:assert/strict";
 import ts from "typescript";
 import type { TestCase } from "./test-case.ts";
@@ -76,11 +77,11 @@ export function registeredRuleTests(text: string): RuleTestRegistrations {
         ts.ScriptTarget.Latest,
         true,
     );
-    const imports: Map<string, string> = new Map<string, string>();
-    const constants: Map<string, string> = new Map<string, string>();
-    const rules: Set<string> = new Set<string>();
-    const syntaxSelectors: Set<string> = new Set<string>();
-    const parserRestrictions: Set<string> = new Set<string>();
+    const imports: Mut<Map<string, string>> = new Map<string, string>();
+    const constants: Mut<Map<string, string>> = new Map<string, string>();
+    const rules: Mut<Set<string>> = new Set<string>();
+    const syntaxSelectors: Mut<Set<string>> = new Set<string>();
+    const parserRestrictions: Mut<Set<string>> = new Set<string>();
     const stringValue = (node: ts.Node | undefined): string | undefined => {
         if (node === undefined) return undefined;
         if (ts.isStringLiteralLike(node)) return node.text;
