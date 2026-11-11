@@ -38,7 +38,7 @@ void test("every enabled ESLint rule has rejection and acceptance coverage", asy
     );
     assert.ok(typeof config.rules === "object" && config.rules !== null);
     const enabled = Object.entries(config.rules).flatMap(
-        ([rule, setting]: [string, unknown]) => {
+        ([rule, setting]: readonly [string, unknown]) => {
             assert.ok(Array.isArray(setting));
             const values: readonly unknown[] = setting;
             return values[0] === 0 || values[0] === "off" ? [] : [rule];

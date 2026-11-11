@@ -90,6 +90,12 @@ export default defineConfig(
             // Type contracts
             // Require explicit return types so function contracts are visible at the declaration.
             "@typescript-eslint/explicit-function-return-type": "error",
+            // Check readonly input types. Inferred callbacks keep their library contracts;
+            // methods remain callable, so this does not prove absence of mutation.
+            "@typescript-eslint/prefer-readonly-parameter-types": [
+                "error",
+                { ignoreInferredTypes: true, treatMethodsAsReadonly: true },
+            ],
             // Use narrowing instead of type assertions. Const assertions remain allowed.
             "@typescript-eslint/consistent-type-assertions": [
                 "error",
