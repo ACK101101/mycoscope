@@ -1,0 +1,4 @@
+{
+    // Diagnostic fixtures import Effect from generated source strings.
+    "ignoreDependencies": ["effect"],
+}
