@@ -4,6 +4,7 @@ import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
 import eslintComments from "@eslint-community/eslint-plugin-eslint-comments";
 import unicorn from "eslint-plugin-unicorn";
+import mycoscope from "./eslint-rules/index.ts";
 
 // Restrict syntax that complicates dependency resolution for the graph builder.
 // The builder must record an unresolved edge when it cannot resolve a dependency.
@@ -55,6 +56,7 @@ export default defineConfig(
         plugins: {
             "@eslint-community/eslint-comments": eslintComments,
             unicorn,
+            mycoscope,
         },
         languageOptions: {
             parserOptions: {
@@ -86,6 +88,8 @@ export default defineConfig(
                 "error",
                 { fixStyle: "separate-type-imports" },
             ],
+
+            "mycoscope/effect-suppressions": "error",
 
             // Type contracts
             // Require explicit return types so function contracts are visible at the declaration.
