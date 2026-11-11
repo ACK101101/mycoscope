@@ -1,7 +1,7 @@
-import type { Mut } from "../mutation.js";
 import { relative } from "node:path";
 import ts from "typescript";
 
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
 export function unalias(symbol: ts.Symbol, checker: ts.TypeChecker): ts.Symbol {
     return hasFlag(symbol.flags, ts.SymbolFlags.Alias)
         ? checker.getAliasedSymbol(symbol)
@@ -9,6 +9,7 @@ export function unalias(symbol: ts.Symbol, checker: ts.TypeChecker): ts.Symbol {
 }
 export function symbolAt(
     node: ts.Node,
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
     checker: ts.TypeChecker,
 ): ts.Symbol | undefined {
     const symbol =
@@ -20,6 +21,7 @@ export function symbolAt(
             : checker.getSymbolAtLocation(node);
     return symbol === undefined ? undefined : unalias(symbol, checker);
 }
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
 export function unwrap(expression: ts.Expression): ts.Expression {
     return ts.isParenthesizedExpression(expression) ||
         ts.isAsExpression(expression) ||
@@ -31,6 +33,7 @@ export function unwrap(expression: ts.Expression): ts.Expression {
 // Follows value aliases too, including destructured namespace members. Does not trust a spelling.
 export function apiSymbol(
     node: ts.Node,
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
     checker: ts.TypeChecker,
     seen: ReadonlySet<ts.Symbol> = new Set(),
 ): ts.Symbol | undefined {
@@ -46,7 +49,7 @@ export function apiSymbol(
         if (effectModule(callee) !== undefined) return callee;
         if (callee === undefined || seen.has(callee)) return undefined;
         const declaration = callee.valueDeclaration;
-        const returned: Mut<ts.Expression[]> = [];
+        const returned: ts.Expression[] = [];
         function returns(current: ts.Node): void {
             if (
                 ts.isReturnStatement(current) &&
@@ -116,6 +119,7 @@ export function apiSymbol(
     return symbol;
 }
 export function effectModule(
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
     symbol: ts.Symbol | undefined,
 ): string | undefined {
     const declarations = symbol?.declarations ?? [];
@@ -128,6 +132,7 @@ export function effectModule(
     return undefined;
 }
 export function ambientModule(
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
     symbol: ts.Symbol | undefined,
 ): string | undefined {
     const declarations = symbol?.declarations ?? [];
@@ -144,6 +149,7 @@ export function ambientModule(
     }
     return undefined;
 }
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
 export function localFile(file: ts.SourceFile, root: string): boolean {
     const path = relative(root, file.fileName);
     return (

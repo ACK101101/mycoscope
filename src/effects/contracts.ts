@@ -1,5 +1,4 @@
 import ts from "typescript";
-import type { Mut } from "../mutation.js";
 import {
     effectModule,
     hasFlag,
@@ -8,6 +7,7 @@ import {
     unalias,
 } from "./symbols.js";
 
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
 function isReference(type: ts.Type): type is ts.TypeReference {
     return (
         hasFlag(type.flags, ts.TypeFlags.Object) &&
@@ -16,6 +16,7 @@ function isReference(type: ts.Type): type is ts.TypeReference {
         hasFlag(type.objectFlags, ts.ObjectFlags.Reference)
     );
 }
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
 function widened(type: ts.Type): boolean {
     return (
         hasFlag(type.flags, ts.TypeFlags.Any) ||
@@ -26,10 +27,11 @@ function widened(type: ts.Type): boolean {
 }
 function contractAnnotations(
     node: ts.Node,
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
     checker: ts.TypeChecker,
     seen: ReadonlySet<ts.Symbol> = new Set(),
 ): readonly boolean[] {
-    const checks: Mut<boolean[]> = [];
+    const checks: boolean[] = [];
     if (ts.isTypeReferenceNode(node)) {
         const symbol = symbolAt(node.typeName, checker);
         const module = effectModule(symbol);
@@ -56,6 +58,7 @@ function contractAnnotations(
     });
     return checks;
 }
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
 function explicitContract(node: ts.Node, checker: ts.TypeChecker): boolean {
     const annotations = contractAnnotations(node, checker);
     return annotations.length > 0 && annotations.every((complete) => complete);
@@ -68,14 +71,19 @@ interface DeclarationContract {
     readonly explicit: boolean;
 }
 export function findContracts(
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
     exported: ts.Symbol,
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
     checker: ts.TypeChecker,
     root: string,
 ): readonly DeclarationContract[] {
-    const found: Mut<DeclarationContract[]> = [];
+    const found: DeclarationContract[] = [];
     function visit(
+        // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
         type: ts.Type,
+        // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
         symbol: ts.Symbol,
+        // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
         declaration: ts.Declaration,
         seen: ReadonlySet<ts.Type>,
     ): void {

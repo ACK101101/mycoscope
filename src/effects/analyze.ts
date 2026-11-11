@@ -3,7 +3,6 @@ import { comments } from "./comments.js";
 import { findContracts } from "./contracts.js";
 import { relative, resolve } from "node:path";
 import ts from "typescript";
-import type { Mut } from "../mutation.js";
 import type {
     Contract,
     Edge,
@@ -61,6 +60,7 @@ function declarationName(node: ts.Node): ts.DeclarationName | undefined {
         ? node.name
         : undefined;
 }
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
 function isConst(declaration: ts.VariableDeclaration): boolean {
     return (
         ts.isVariableDeclarationList(declaration.parent) &&
@@ -71,29 +71,27 @@ function isConst(declaration: ts.VariableDeclaration): boolean {
 // need a shared symbol table. Edges mean possible static dependencies, not runtime execution order.
 export function analyze(program: ts.Program, policy: Policy): Report {
     const checker = program.getTypeChecker();
-    const nodes: Mut<GraphNode[]> = [];
-    const edges: Mut<Edge[]> = [];
-    const contracts: Mut<Contract[]> = [];
-    const issues: Mut<Issue[]> = [];
-    const exceptions: Mut<Exception[]> = [];
+    const nodes: GraphNode[] = [];
+    const edges: Edge[] = [];
+    const contracts: Contract[] = [];
+    const issues: Issue[] = [];
+    const exceptions: Exception[] = [];
     const files = program
         .getSourceFiles()
         .filter((file) => localFile(file, policy.rootDirectory));
-    const ids: Mut<Map<ts.Symbol, string>> = new Map();
-    const issueKeys: Mut<Set<string>> = new Set();
-    const edgeKeys: Mut<Set<string>> = new Set();
-    const directives: Mut<
-        Map<
-            string,
-            {
-                readonly site: Site;
-                readonly rule: string;
-                readonly reason: string;
-            }
-        >
-    > = new Map();
-    const usedDirectives: Mut<Set<string>> = new Set();
-    const reassigned: Mut<Set<ts.Symbol>> = new Set();
+    const ids = new Map<ts.Symbol, string>();
+    const issueKeys = new Set<string>();
+    const edgeKeys = new Set<string>();
+    const directives = new Map<
+        string,
+        {
+            readonly site: Site;
+            readonly rule: string;
+            readonly reason: string;
+        }
+    >();
+    const usedDirectives = new Set<string>();
+    const reassigned = new Set<ts.Symbol>();
     function written(node: ts.Node): void {
         const symbol = symbolAt(node, checker);
         if (symbol !== undefined) reassigned.add(symbol);
@@ -174,6 +172,7 @@ export function analyze(program: ts.Program, policy: Policy): Report {
         edgeKeys.add(key);
         edges.push({ from, to, kind });
     }
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
     function symbolNode(symbol: ts.Symbol): string {
         const canonical = unalias(symbol, checker);
         const known = ids.get(canonical);
@@ -209,6 +208,7 @@ export function analyze(program: ts.Program, policy: Policy): Report {
         });
         return id;
     }
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
     function moduleNode(file: ts.SourceFile): string {
         const id = relative(policy.rootDirectory, file.fileName);
         if (!nodes.some((node) => node.id === id))
@@ -236,7 +236,7 @@ export function analyze(program: ts.Program, policy: Policy): Report {
         refs: readonly SymbolRef[],
         callable = false,
     ): ReadonlySet<ts.Symbol> {
-        const result: Mut<Set<ts.Symbol>> = new Set();
+        const result = new Set<ts.Symbol>();
         for (const ref of refs) {
             const file = files.find(
                 (candidate) =>
@@ -286,7 +286,7 @@ export function analyze(program: ts.Program, policy: Policy): Report {
     }
     const roots = resolveRefs(policy.wiringRoots, true);
     const adapters = resolveRefs(policy.adapters);
-    const executables: Mut<Map<string, string>> = new Map();
+    const executables = new Map<string, string>();
     const declaredExecutables = policy.executables ?? [];
     for (const executable of declaredExecutables) {
         const targets = resolveRefs([executable.root], true);
@@ -317,6 +317,7 @@ export function analyze(program: ts.Program, policy: Policy): Report {
         return false;
     }
     function recoverable(
+        // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
         expression: ts.Expression,
         seen: ReadonlySet<ts.Symbol> = new Set(),
     ): boolean {
@@ -384,7 +385,7 @@ export function analyze(program: ts.Program, policy: Policy): Report {
             if (!localFile(declaration.getSourceFile(), policy.rootDirectory))
                 return true;
             if (seen.has(symbol)) return false;
-            const returned: Mut<ts.Expression[]> = [];
+            const returned: ts.Expression[] = [];
             function returns(node: ts.Node): void {
                 if (ts.isReturnStatement(node) && node.expression !== undefined)
                     returned.push(node.expression);
@@ -429,6 +430,7 @@ export function analyze(program: ts.Program, policy: Policy): Report {
             value.kind === ts.SyntaxKind.NullKeyword
         );
     }
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
     function checkExport(exported: ts.Symbol): void {
         for (const contract of findContracts(
             exported,
@@ -455,6 +457,7 @@ export function analyze(program: ts.Program, policy: Policy): Report {
                         ? "never"
                         : checker.typeToString(args[2]),
             });
+            // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
             function requirement(type: ts.Type): void {
                 const required = type.getSymbol();
                 if (required !== undefined)
