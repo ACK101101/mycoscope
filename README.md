@@ -1,5 +1,12 @@
 # Mycoscope
 
+## Running tests
+
+`npm test` runs every test in one process so ESLint and TypeScript setup can be
+reused across files. Tests share module state and globals. Tests that need process
+isolation launch their own subprocesses. Run a specific file with
+`node --import tsx --test tests/path.test.ts`.
+
 ## Readonly inputs
 
 Function parameters use readonly types by default. ESLint's
