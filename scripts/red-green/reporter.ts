@@ -1,5 +1,4 @@
 import { realpathSync } from "node:fs";
-import type { Mut } from "../../src/mutation.js";
 import { relative } from "node:path";
 import type { TestEvent } from "node:test/reporters";
 import {
@@ -37,7 +36,7 @@ export function failure(error: unknown): Failure {
 export default async function* reporter(
     source: AsyncIterable<TestEvent>,
 ): AsyncGenerator<string, void, unknown> {
-    const pending: Mut<Result[]> = [];
+    const pending: Result[] = [];
     for await (const event of source) {
         if (event.type === "test:pass" || event.type === "test:fail") {
             const data = event.data;

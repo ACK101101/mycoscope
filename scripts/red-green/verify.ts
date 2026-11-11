@@ -1,7 +1,6 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Mut } from "../../src/mutation.js";
 import { checkEvidence, sameInventory } from "./evidence.ts";
 import {
     ancestor,
@@ -120,8 +119,8 @@ function plan(options: Options, file: string): Plan {
     return { file, manifest, testsCommit, testFiles, frozen };
 }
 export async function verify(options: Options): Promise<Verification> {
-    const reports: Mut<ContractReport[]> = [];
-    const errors: Mut<string[]> = [];
+    const reports: ContractReport[] = [];
+    const errors: string[] = [];
     const workspace = mkdtempSync(join(tmpdir(), "mycoscope-red-green-"));
     try {
         for (const sha of [options.base, options.head, options.trunk])
@@ -136,7 +135,7 @@ export async function verify(options: Options): Promise<Verification> {
         const manifests = files(options.repository, options.head).filter(
             (file) => /^\.red-green\/[a-zA-Z0-9_-]+\.json$/.test(file),
         );
-        const plans: Mut<Plan[]> = [];
+        const plans: Plan[] = [];
         for (const file of manifests) {
             const testsCommit = git(options.repository, [
                 "log",
@@ -191,7 +190,7 @@ export async function verify(options: Options): Promise<Verification> {
                     join(workspace, `${String(index)}-candidate`),
                     options.dependencyRoot,
                 );
-                const candidateErrors: Mut<string[]> = [
+                const candidateErrors: string[] = [
                     ...checkEvidence(
                         item.manifest,
                         candidate.transcript,

@@ -1,5 +1,3 @@
-import type { Mut } from "../../src/mutation.js";
-
 export type Json =
     | null
     | boolean
@@ -186,7 +184,7 @@ function summary(value: unknown): value is Summary {
     );
 }
 export function parseTranscript(text: string): Transcript {
-    const results: Mut<Result[]> = [];
+    const results: Result[] = [];
     let totals: Summary | undefined;
     for (const line of text.split("\n")) {
         if (line.trim().length === 0) continue;

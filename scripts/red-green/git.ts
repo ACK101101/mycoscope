@@ -170,7 +170,7 @@ function dependencies(value: unknown): unknown {
 export function install(
     directory: string,
     dependencyRoot: string,
-    environment: NodeJS.ProcessEnv,
+    environment: Readonly<NodeJS.ProcessEnv>,
 ): void {
     const localLock = readFileSync(
         join(directory, "package-lock.json"),

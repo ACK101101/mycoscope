@@ -1,4 +1,3 @@
-import type { Mut } from "../src/mutation.js";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verify } from "./red-green/verify.ts";
@@ -6,7 +5,7 @@ import { verify } from "./red-green/verify.ts";
 async function main(): Promise<void> {
     try {
         const args = process.argv.slice(2);
-        const values: Mut<Map<string, string>> = new Map();
+        const values = new Map<string, string>();
         const allowed = new Set([
             "--repo",
             "--base",
@@ -54,7 +53,6 @@ async function main(): Promise<void> {
             ),
         });
         console.log(JSON.stringify(report, null, 2));
-        // eslint-disable-next-line mycoscope/no-foreign-mutation -- Node exposes CLI exit status as a writable process global.
         process.exitCode = report.status === "rejected" ? 1 : 0;
     } catch (error: unknown) {
         console.log(
@@ -65,7 +63,6 @@ async function main(): Promise<void> {
                 ],
             }),
         );
-        // eslint-disable-next-line mycoscope/no-foreign-mutation -- Command-line argument/setup failures must return nonzero to CI.
         process.exitCode = 1;
     }
 }

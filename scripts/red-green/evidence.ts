@@ -1,5 +1,4 @@
 import { isDeepStrictEqual } from "node:util";
-import type { Mut } from "../../src/mutation.js";
 import { identity, type Manifest, type Transcript } from "./model.ts";
 
 export function checkEvidence(
@@ -8,12 +7,12 @@ export function checkEvidence(
     phase: "baseline" | "candidate",
     exitCode: number | null,
 ): readonly string[] {
-    const errors: Mut<string[]> = [];
+    const errors: string[] = [];
     const expected = new Map(
         manifest.cases.map((item) => [identity(item), item]),
     );
     const selectedFiles = new Set(manifest.cases.map((item) => item.file));
-    const seen: Mut<Set<string>> = new Set();
+    const seen = new Set<string>();
     let failures = 0;
     for (const result of transcript.results) {
         const key = identity(result);

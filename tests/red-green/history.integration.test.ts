@@ -265,7 +265,6 @@ async function lintReport(
     for (const file of [
         "tsconfig.json",
         "tsconfig.effect-settings.json",
-        "src/mutation.ts",
         "src/effects/directives.ts",
         "tests/harness/lint-adapter.ts",
         "tests/harness/rule-coverage.ts",
@@ -418,7 +417,6 @@ for (const invalid of [false, true])
             await withFixture(async (value) => {
                 git(value.repository, ["checkout", "-q", value.baseline]);
                 for (const file of [
-                    "src/mutation.ts",
                     "tests/harness/tsc-adapter.ts",
                     "tests/harness/test-case.ts",
                     "tests/harness/behavior.ts",

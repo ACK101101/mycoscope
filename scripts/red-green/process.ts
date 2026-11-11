@@ -1,5 +1,4 @@
 import { spawn } from "node:child_process";
-import type { Mut } from "../../src/mutation.js";
 
 export interface ProcessOutput {
     readonly stdout: string;
@@ -10,7 +9,7 @@ export function runProcess(
     command: string,
     args: readonly string[],
     cwd: string,
-    env: NodeJS.ProcessEnv,
+    env: Readonly<NodeJS.ProcessEnv>,
     timeoutMs = 180000,
     maxBytes = 16 * 1024 * 1024,
 ): Promise<ProcessOutput> {
@@ -25,8 +24,8 @@ export function runProcess(
             stdio: "pipe",
             detached: true,
         });
-        const stdout: Mut<Buffer[]> = [];
-        const stderr: Mut<Buffer[]> = [];
+        const stdout: Buffer[] = [];
+        const stderr: Buffer[] = [];
         let bytes = 0;
         let settled = false;
         function stopGroup(): void {
@@ -42,7 +41,7 @@ export function runProcess(
                     throw error;
             }
         }
-        function fail(error: Error): void {
+        function fail(error: Readonly<Error>): void {
             if (settled) return;
             settled = true;
             clearTimeout(timer);
@@ -61,13 +60,13 @@ export function runProcess(
         const timer = setTimeout(() => {
             fail(new Error("Test process timed out outside assertions."));
         }, timeoutMs);
-        child.stdout.on("data", (chunk: Buffer): void => {
+        child.stdout.on("data", (chunk: Readonly<Buffer>): void => {
             bytes += chunk.length;
             if (bytes > maxBytes)
                 fail(new Error("Test output exceeded its byte budget."));
             else stdout.push(chunk);
         });
-        child.stderr.on("data", (chunk: Buffer): void => {
+        child.stderr.on("data", (chunk: Readonly<Buffer>): void => {
             bytes += chunk.length;
             if (bytes > maxBytes)
                 fail(new Error("Test output exceeded its byte budget."));
