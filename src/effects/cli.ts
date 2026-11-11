@@ -9,7 +9,6 @@ export function writeResult(result: unknown): void {
     console.log(JSON.stringify(result, null, 2));
 }
 export function setExitCode(code: number): void {
-    // eslint-disable-next-line mycoscope/no-foreign-mutation -- Node exposes exit status as a writable global; this is the designated process adapter.
     process.exitCode = code;
 }
 export function main(configPath: string): number {
