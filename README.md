@@ -24,6 +24,9 @@ mutation or other side effects:
   `ReadonlyMap` and `ReadonlySet` at read-only boundaries; this distinction is a
   convention, not enforced by the configured rule.
 - TypeScript permits readonly object properties to flow into writable aliases.
+- Compiler objects used by the Effect analyzer retain their TypeScript package
+  types through reasoned rule exceptions. These are API compatibility exceptions,
+  not claims that the objects are immutable.
 - Readonly types do not freeze objects, copy data, establish exclusive ownership,
   or prevent other references from modifying the same data.
 

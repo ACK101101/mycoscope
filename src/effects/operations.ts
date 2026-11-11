@@ -1,5 +1,4 @@
 import ts from "typescript";
-import type { Mut } from "../mutation.js";
 import { apiSymbol, effectModule, parentOf, symbolAt } from "./symbols.js";
 
 export interface Operation {
@@ -19,7 +18,9 @@ const CONSTRUCTION_PARAMETERS = new Set([
 // Resolve the actual overload, including returned callable signatures. Looking only at the
 // surface callee or the last argument loses curry stages and mistakes options for providers.
 export function operation(
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
     call: ts.CallExpression,
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
     checker: ts.TypeChecker,
 ): Operation {
     const signature = checker.getResolvedSignature(call);
@@ -35,7 +36,7 @@ export function operation(
         }
         declaration = parentOf(declaration);
     }
-    const inputs: Mut<ts.Expression[]> = [];
+    const inputs: ts.Expression[] = [];
     const parameters = signature?.parameters ?? [];
     for (const [index, parameter] of parameters.entries()) {
         const argument = call.arguments[index];

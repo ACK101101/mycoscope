@@ -126,6 +126,7 @@ const GLOBAL_CAPABILITIES = new Set([
     "crypto",
 ]);
 
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
 export function isWiring(symbol: ts.Symbol | undefined): boolean {
     const module = effectModule(symbol);
     const name = symbol?.getName() ?? "";
@@ -137,6 +138,7 @@ export function isWiring(symbol: ts.Symbol | undefined): boolean {
         module === "ManagedRuntime"
     );
 }
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
 export function isProvider(symbol: ts.Symbol | undefined): boolean {
     const module = effectModule(symbol);
     return (
@@ -144,6 +146,7 @@ export function isProvider(symbol: ts.Symbol | undefined): boolean {
         (symbol?.getName().startsWith("provide") ?? false)
     );
 }
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
 export function isCapability(symbol: ts.Symbol | undefined): boolean {
     if (symbol === undefined) return false;
     const module = effectModule(symbol);
@@ -187,6 +190,7 @@ export function isCapability(symbol: ts.Symbol | undefined): boolean {
         }) ?? false
     );
 }
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
 export function isProcessLaunch(symbol: ts.Symbol | undefined): boolean {
     return (
         ambientModule(symbol) === "child_process" &&
