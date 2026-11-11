@@ -88,7 +88,10 @@ function changedLinesByRevision(
     return files;
 }
 
-function sourceComments(source: ts.SourceFile): readonly ts.CommentRange[] {
+function sourceComments(
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- TypeScript traversal APIs consume compiler-owned SourceFile objects.
+    source: ts.SourceFile,
+): readonly ts.CommentRange[] {
     const comments = new Map<number, ts.CommentRange>();
     const scanner = ts.createScanner(
         ts.ScriptTarget.Latest,
@@ -126,8 +129,9 @@ function sourceComments(source: ts.SourceFile): readonly ts.CommentRange[] {
 
 function commentException(
     file: string,
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- TypeScript traversal APIs consume compiler-owned SourceFile objects.
     source: ts.SourceFile,
-    comment: ts.CommentRange,
+    comment: Readonly<ts.CommentRange>,
 ): ExceptionDirective | null {
     const block = comment.kind === ts.SyntaxKind.MultiLineCommentTrivia;
     const text = source.text.slice(

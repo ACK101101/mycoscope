@@ -12,6 +12,7 @@ interface Comment {
 
 const BOT = "github-actions[bot]";
 
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- The fake GitHub API updates the caller's comment store.
 async function publish(comments: Comment[], body: string): Promise<void> {
     const workflow = readFileSync(".github/workflows/exceptions.yml", "utf8");
     const script = workflow.split("          script: |\n")[1];
@@ -40,8 +41,8 @@ async function publish(comments: Comment[], body: string): Promise<void> {
                             comment_id,
                             body: updatedBody,
                         }: {
-                            comment_id: number;
-                            body: string;
+                            readonly comment_id: number;
+                            readonly body: string;
                         }) => {
                             const comment = comments.find(
                                 ({ id }) => id === comment_id,
@@ -53,7 +54,7 @@ async function publish(comments: Comment[], body: string): Promise<void> {
                         createComment: ({
                             body: newBody,
                         }: {
-                            body: string;
+                            readonly body: string;
                         }) => {
                             const comment = {
                                 id: comments.length + 1,

@@ -20,7 +20,7 @@ void test("the report reads both Git snapshots from the merge base, independent 
     const directory = mkdtempSync(
         join(tmpdir(), "mycoscope-exception-report-"),
     );
-    const git = (...args: string[]): string =>
+    const git = (...args: readonly string[]): string =>
         execFileSync(
             "git",
             [
