@@ -130,6 +130,6 @@ void test("a different syntax restriction cannot satisfy a selector's rejection 
     assert.equal(result.status, 1, result.stdout + result.stderr);
     assert.match(
         result.stdout + result.stderr,
-        /Expected values to be strictly deep-equal/,
+        /Behavior did not match the frozen expectation/,
     );
 });
