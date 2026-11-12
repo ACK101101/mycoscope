@@ -83,7 +83,11 @@ export function readProject(configPath: string): Project {
     if (parsed.fileNames.length === 0)
         throw new Error("The configured project contains no source files.");
     return {
-        program: ts.createProgram(parsed.fileNames, parsed.options),
+        program: ts.createProgram(parsed.fileNames, parsed.options, {
+            ...ts.createCompilerHost(parsed.options),
+            // Match tsc: retain JSDoc needed for type errors, without documentation-only ASTs.
+            jsDocParsingMode: ts.JSDocParsingMode.ParseForTypeErrors,
+        }),
         policy: {
             executables,
             rootDirectory,
