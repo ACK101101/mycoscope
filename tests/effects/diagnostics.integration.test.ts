@@ -1,155 +1,204 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile, symlink, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { spawnSync } from "node:child_process";
-import { test } from "node:test";
-import { fileURLToPath } from "node:url";
-import { EFFECT_DIAGNOSTIC_CASES } from "./diagnostic-cases.ts";
+import { after, test } from "node:test";
+import {
+    readEffectDiagnosticSeverities,
+    runEffectDiagnostics,
+} from "../harness/effect-adapter.ts";
 
-const SETTINGS_PATH = new URL(
-    "../../tsconfig.effect-settings.json",
-    import.meta.url,
-);
-const NODE_MODULES_PATH = fileURLToPath(
-    new URL("../../node_modules", import.meta.url),
-);
-const EFFECT_CLI_PATH = fileURLToPath(
-    import.meta.resolve("@effect/language-service/cli.js"),
-);
-const CHILD_ENV = Object.fromEntries(
-    Object.entries(process.env).filter(
-        ([name]) => name !== "NODE_TEST_CONTEXT",
-    ),
-);
-const IMPORT = 'import { Effect, Context, Layer } from "effect";\n';
+const rejectedDiagnostics = new Set<string>();
+const acceptedDiagnostics = new Set<string>();
 
-async function runEffectDiagnostics(code: string): Promise<{
-    readonly status: number | null;
-    readonly diagnostics: readonly {
-        readonly name: string;
-        readonly severity: string;
-        readonly message: string;
-    }[];
-}> {
-    const directory = await mkdtemp(
-        join(tmpdir(), "mycoscope-effect-diagnostics-"),
+void test("floatingEffect rejects an unused Effect", async () => {
+    const result = await runEffectDiagnostics(`
+        import { Effect } from "effect";
+        Effect.succeed(1);
+    `);
+
+    assert.equal(result.status, 1);
+    assert.deepEqual(
+        result.diagnostics.map(({ name, severity }) => ({ name, severity })),
+        [{ name: "floatingEffect", severity: "error" }],
     );
-    try {
-        const settings: unknown = JSON.parse(
-            await readFile(SETTINGS_PATH, "utf8"),
-        );
-        assert.ok(
-            typeof settings === "object" &&
-                settings !== null &&
-                "compilerOptions" in settings &&
-                typeof settings.compilerOptions === "object" &&
-                settings.compilerOptions !== null,
-        );
-        await symlink(
-            NODE_MODULES_PATH,
-            join(directory, "node_modules"),
-            "dir",
-        );
-        await writeFile(join(directory, "package.json"), '{"type":"module"}');
-        await writeFile(
-            join(directory, "tsconfig.json"),
-            JSON.stringify({
-                compilerOptions: {
-                    target: "ESNext",
-                    module: "NodeNext",
-                    noEmit: true,
-                    strict: true,
-                    skipLibCheck: true,
-                    ...settings.compilerOptions,
-                },
-                include: ["case.ts"],
-            }),
-        );
-        await writeFile(join(directory, "case.ts"), IMPORT + code);
-        const result = spawnSync(
-            process.execPath,
-            [
-                EFFECT_CLI_PATH,
-                "diagnostics",
-                "--project",
-                "tsconfig.json",
-                "--format",
-                "json",
-                "--strict",
-            ],
-            {
-                cwd: directory,
-                env: CHILD_ENV,
-                encoding: "utf8",
-                timeout: 30_000,
-            },
-        );
-        assert.ifError(result.error);
-        const output: unknown = JSON.parse(result.stdout);
-        assert.ok(
-            typeof output === "object" &&
-                output !== null &&
-                "diagnostics" in output &&
-                Array.isArray(output.diagnostics),
-            result.stdout + result.stderr,
-        );
-        const diagnostics = output.diagnostics.map((diagnostic: unknown) => {
-            assert.ok(
-                typeof diagnostic === "object" &&
-                    diagnostic !== null &&
-                    "name" in diagnostic &&
-                    typeof diagnostic.name === "string" &&
-                    "severity" in diagnostic &&
-                    typeof diagnostic.severity === "string" &&
-                    "message" in diagnostic &&
-                    typeof diagnostic.message === "string",
-            );
-            return {
-                name: diagnostic.name,
-                severity: diagnostic.severity,
-                message: diagnostic.message,
-            };
-        });
-        return { status: result.status, diagnostics };
-    } finally {
-        await rm(directory, { recursive: true, force: true });
-    }
-}
+    rejectedDiagnostics.add("floatingEffect");
+});
 
-for (const example of EFFECT_DIAGNOSTIC_CASES) {
-    void test(`Effect ${example.name} rejects its violation`, async () => {
-        const result = await runEffectDiagnostics(example.rejected);
-        assert.equal(result.status, 1);
-        assert.deepEqual(
-            result.diagnostics.map(({ name, severity }) => ({
-                name,
-                severity,
-            })),
-            example.diagnosticNames.map((name) => ({
-                name,
-                severity: "error",
-            })),
-        );
-        for (const diagnostic of result.diagnostics) {
-            assert.ok(
-                diagnostic.message.includes(example.message),
-                diagnostic.message,
-            );
-        }
-    });
-    void test(`Effect ${example.name} accepts its control`, async () => {
-        const result = await runEffectDiagnostics(example.accepted);
-        assert.equal(result.status, 0);
-        assert.deepEqual(result.diagnostics, []);
-    });
-}
+void test("floatingEffect accepts an exported Effect", async () => {
+    const result = await runEffectDiagnostics(`
+        import { Effect } from "effect";
+        export const value = Effect.succeed(1);
+    `);
 
-void test("reasoned upstream suppressions retain their native behavior", async () => {
-    const result = await runEffectDiagnostics(
-        "// @effect-" +
-            "diagnostics-next-line effect/floatingEffect:off -- callback owns execution\nEffect.succeed(1);",
-    );
     assert.equal(result.status, 0);
     assert.deepEqual(result.diagnostics, []);
+    acceptedDiagnostics.add("floatingEffect");
+});
+
+void test("missingEffectError rejects an omitted error type", async () => {
+    const result = await runEffectDiagnostics(`
+        import { Effect } from "effect";
+        export const f = (): Effect.Effect<never> => Effect.fail("oops");
+    `);
+
+    assert.equal(result.status, 1);
+    // Upstream CLI workaround: version 0.87.5 assigns both missing-channel
+    // diagnostics code 1 and labels both missingEffectContext. Check the message
+    // to distinguish missing errors from missing requirements.
+    assert.deepEqual(
+        result.diagnostics.map(({ name, severity }) => ({ name, severity })),
+        [{ name: "missingEffectContext", severity: "error" }],
+    );
+    assert.match(
+        result.diagnostics[0]?.message ?? "",
+        /expected Effect errors/,
+    );
+    rejectedDiagnostics.add("missingEffectError");
+});
+
+void test("missingEffectError accepts a declared error type", async () => {
+    const result = await runEffectDiagnostics(`
+        import { Effect } from "effect";
+        export const f = (): Effect.Effect<never, string, never> => Effect.fail("oops");
+    `);
+
+    assert.equal(result.status, 0);
+    assert.deepEqual(result.diagnostics, []);
+    acceptedDiagnostics.add("missingEffectError");
+});
+
+void test("missingEffectContext rejects an omitted service requirement", async () => {
+    const result = await runEffectDiagnostics(`
+        import { Context, Effect } from "effect";
+        class Reader extends Context.Service<Reader, { read: () => string }>()("Reader") {}
+        export const f: Effect.Effect<number> = Effect.gen(function* () {
+            yield* Reader;
+            return 1;
+        });
+    `);
+
+    assert.equal(result.status, 1);
+    assert.deepEqual(
+        result.diagnostics.map(({ name, severity }) => ({ name, severity })),
+        [{ name: "missingEffectContext", severity: "error" }],
+    );
+    assert.match(
+        result.diagnostics[0]?.message ?? "",
+        /missing from the expected Effect context/,
+    );
+    rejectedDiagnostics.add("missingEffectContext");
+});
+
+void test("missingEffectContext accepts a declared service requirement", async () => {
+    const result = await runEffectDiagnostics(`
+        import { Context, Effect } from "effect";
+        class Reader extends Context.Service<Reader, { read: () => string }>()("Reader") {}
+        export const f: Effect.Effect<number, never, Reader> = Effect.gen(function* () {
+            yield* Reader;
+            return 1;
+        });
+    `);
+
+    assert.equal(result.status, 0);
+    assert.deepEqual(result.diagnostics, []);
+    acceptedDiagnostics.add("missingEffectContext");
+});
+
+void test("missingLayerContext rejects an omitted Layer requirement", async () => {
+    const result = await runEffectDiagnostics(`
+        import { Context, Effect, Layer } from "effect";
+        class Reader extends Context.Service<Reader, { read: () => string }>()("Reader") {}
+        class Config extends Context.Service<Config, { path: string }>()("Config") {}
+        export const layer: Layer.Layer<Reader> = Layer.effect(Reader, Effect.gen(function* () {
+            yield* Config;
+            return { read: () => "x" };
+        }));
+    `);
+
+    assert.equal(result.status, 1);
+    assert.deepEqual(
+        result.diagnostics.map(({ name, severity }) => ({ name, severity })),
+        [{ name: "missingLayerContext", severity: "error" }],
+    );
+    rejectedDiagnostics.add("missingLayerContext");
+});
+
+void test("missingLayerContext accepts a declared Layer requirement", async () => {
+    const result = await runEffectDiagnostics(`
+        import { Context, Effect, Layer } from "effect";
+        class Reader extends Context.Service<Reader, { read: () => string }>()("Reader") {}
+        class Config extends Context.Service<Config, { path: string }>()("Config") {}
+        export const layer: Layer.Layer<Reader, never, Config> = Layer.effect(Reader, Effect.gen(function* () {
+            yield* Config;
+            return { read: () => "x" };
+        }));
+    `);
+
+    assert.equal(result.status, 0);
+    assert.deepEqual(result.diagnostics, []);
+    acceptedDiagnostics.add("missingLayerContext");
+});
+
+void test("anyUnknownInErrorContext rejects an unknown error type", async () => {
+    const result = await runEffectDiagnostics(`
+        import { Effect } from "effect";
+        export const value = Effect.fail(undefined as unknown);
+    `);
+
+    assert.equal(result.status, 1);
+    assert.deepEqual(
+        result.diagnostics.map(({ name, severity }) => ({ name, severity })),
+        [
+            { name: "anyUnknownInErrorContext", severity: "error" },
+            { name: "anyUnknownInErrorContext", severity: "error" },
+        ],
+    );
+    rejectedDiagnostics.add("anyUnknownInErrorContext");
+});
+
+void test("anyUnknownInErrorContext accepts a known error type", async () => {
+    const result = await runEffectDiagnostics(`
+        import { Effect } from "effect";
+        export const value = Effect.fail("known");
+    `);
+
+    assert.equal(result.status, 0);
+    assert.deepEqual(result.diagnostics, []);
+    acceptedDiagnostics.add("anyUnknownInErrorContext");
+});
+
+void test("a reasoned upstream suppression accepts an unused Effect", async () => {
+    const result = await runEffectDiagnostics(
+        'import { Effect } from "effect";\n' +
+            "// @effect-" +
+            "diagnostics-next-line effect/floatingEffect:off -- callback owns execution\n" +
+            "Effect.succeed(1);",
+    );
+
+    assert.equal(result.status, 0);
+    assert.deepEqual(result.diagnostics, []);
+});
+
+// Check completed cases after all callbacks, including when tests run concurrently.
+after(async () => {
+    // Native test selection intentionally omits cases. Check coverage on full runs.
+    if (
+        process.execArgv.some((argument) =>
+            /^--test-(?:name-pattern|skip-pattern|only)(?:=|$)/.test(argument),
+        )
+    )
+        return;
+    const severities = await readEffectDiagnosticSeverities();
+    const enabled = Object.entries(severities)
+        .filter(([, severity]) => severity !== "off")
+        .map(([name]) => name)
+        .toSorted();
+    assert.deepEqual(
+        [...rejectedDiagnostics].toSorted(),
+        enabled,
+        "Every enabled Effect diagnostic needs a passing rejection test",
+    );
+    assert.deepEqual(
+        [...acceptedDiagnostics].toSorted(),
+        enabled,
+        "Every enabled Effect diagnostic needs a passing acceptance test",
+    );
 });

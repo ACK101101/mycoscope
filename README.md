@@ -16,6 +16,9 @@ CLI integration tests use a temporary project, run the command with that project
 as its working directory, check its exit status and structured output, and remove
 the project in `finally`. Keep subprocesses for CLI behavior or process isolation.
 Share tool adapters when needed; do not make unit tests use a fixture framework.
+Test files register ordinary `test(...)` callbacks and keep inputs beside their
+assertions. Adapters execute tools and normalize results; they do not register
+tests. Keep repetitive setup in `tests/harness/`.
 
 ## Readonly inputs
 
