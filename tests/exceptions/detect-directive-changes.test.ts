@@ -14,6 +14,34 @@ function report(source: string, file = "src/a.ts"): ExceptionChange[] {
     return findExceptionChanges(addedFile(file, source), () => source);
 }
 
+void test("reports effective Effect overrides in comments and literals", () => {
+    const marker = "@effect-" + "diagnostics";
+    for (const source of [
+        `// ${marker}-next-line effect/floatingEffect:off -- callback owns execution`,
+        `// note: ${marker}-next-line effect/floatingEffect:off -- callback owns execution`,
+        `/**\n * ${marker}-next-line effect/floatingEffect:off -- callback owns execution\n */`,
+        `const text = "${marker}-next-line effect/floatingEffect:off -- callback owns execution";`,
+    ]) {
+        const changes = report(source);
+        assert.equal(changes.length, 1);
+        const change = changes[0];
+        assert.ok(change !== undefined);
+        assert.equal(change.directive, `${marker}-next-line`);
+        assert.match(change.reason, /callback owns execution/);
+    }
+});
+
+void test("reports an Effect override when only its continuation line changes", () => {
+    const marker = "@effect-" + "diagnostics";
+    const source = `/* ${marker}\neffect/floatingEffect:off */`;
+    const diff =
+        "+++ b/src/a.ts\n@@ -2 +2 @@\n-effect/floatingEffect:error */\n+effect/floatingEffect:off */";
+    assert.equal(
+        findExceptionChanges(diff, () => source)[0]?.directive,
+        marker,
+    );
+});
+
 void test("finds added directives with their source location and reason", () => {
     const source = [
         "const ok = 1;",
