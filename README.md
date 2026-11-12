@@ -7,6 +7,19 @@ reused across files. Tests share module state and globals. Tests that need proce
 isolation launch their own subprocesses. Run a specific file with
 `node --import tsx --test tests/path.test.ts`.
 
+Use `node:test` and `node:assert/strict` throughout. Unit tests call repository
+functions directly with explicit inputs and expected results. Integration tests
+exercise a real tool through its API or CLI with controlled inputs and expected
+results. Keep configuration-inventory checks separate from behavior tests.
+
+CLI integration tests use a temporary project, run the command with that project
+as its working directory, check its exit status and structured output, and remove
+the project in `finally`. Keep subprocesses for CLI behavior or process isolation.
+Share tool adapters when needed; do not make unit tests use a fixture framework.
+Test files register ordinary `test(...)` callbacks and keep inputs beside their
+assertions. Adapters execute tools and normalize results; they do not register
+tests. Keep repetitive setup in `tests/harness/`.
+
 ## Readonly inputs
 
 Function parameters use readonly types by default. ESLint's

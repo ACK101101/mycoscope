@@ -2,6 +2,7 @@
   // These options restrict code patterns so the graph builder can resolve dependencies.
   // Use relative imports. paths and baseUrl aliases would require the builder to read
   // TypeScript configuration to resolve imports.
+  "extends": "./tsconfig.effect-settings.json",
   "compilerOptions": {
     // File layout
     // Check source and tests without emitting files. tsconfig.build.json emits src only.
