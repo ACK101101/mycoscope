@@ -1,10 +1,5 @@
 import ts from "typescript";
-import {
-    locationFromOffset,
-    runCases,
-    type TestCase,
-    type ActualDiagnostic,
-} from "./test-case.ts";
+import { locationFromOffset, type ActualDiagnostic } from "./diagnostics.ts";
 
 const SNIPPET_PATH = "/case.ts";
 // Copy the target and standard libraries from tsconfig.json so snippets can compile.
@@ -54,11 +49,10 @@ function toActualDiagnostic(
 
 // Compile each snippet with the selected option from tsconfig.json.
 // requiredOptions adds dependencies, such as strictNullChecks for strictPropertyInitialization.
-export function testCompilerOption(
+function createCompiler(
     option: string,
-    cases: readonly TestCase[],
     requiredOptions: readonly string[] = [],
-): void {
+): (code: string) => readonly ActualDiagnostic[] {
     const configuredOptions = readCompilerOptions();
     const underTest = [option, ...requiredOptions];
     const missing = underTest.filter(
@@ -91,7 +85,7 @@ export function testCompilerOption(
         return sourceFileCache.get(name);
     };
 
-    runCases(option, cases, (code) => {
+    return (code) => {
         const program = ts.createProgram([SNIPPET_PATH], options, {
             ...compilerHost,
             fileExists: (name) =>
@@ -118,6 +112,21 @@ export function testCompilerOption(
                 ),
             );
         }
-        return Promise.resolve(diagnostics);
-    });
+        return diagnostics;
+    };
+}
+
+const compilers: Map<string, (code: string) => readonly ActualDiagnostic[]> =
+    new Map<string, (code: string) => readonly ActualDiagnostic[]>();
+
+export function compileWithOption(
+    option: string,
+    code: string,
+    requiredOptions: readonly string[] = [],
+): readonly ActualDiagnostic[] {
+    const key = JSON.stringify([option, requiredOptions]);
+    const compile =
+        compilers.get(key) ?? createCompiler(option, requiredOptions);
+    compilers.set(key, compile);
+    return compile(code);
 }

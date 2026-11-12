@@ -1,600 +1,730 @@
-import {
-    testLintExamples,
-    testParserRejection,
-} from "../../harness/lint-adapter.ts";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { lintRule, lintParserRestriction } from "../../harness/lint-adapter.ts";
 
-// Check each inherited rule with source it rejects and source it accepts.
-testLintExamples(
-    "for-direction",
-    "for(let i=0;i<3;i--) { console.log(i); }",
-    "for(let i=0;i<3;i++) { console.log(i); }",
-);
-testLintExamples(
-    "no-async-promise-executor",
-    "new Promise(async resolve => { resolve(1); });",
-    "new Promise(resolve => { resolve(1); });",
-);
-testLintExamples(
-    "no-case-declarations",
-    "switch(x) { case 1: let a=2; break; }",
-    "switch(x) { case 1: { let a=2; break; } }",
-);
-testLintExamples("no-compare-neg-zero", "x === -0;", "Object.is(x, -0);");
-testLintExamples(
-    "no-cond-assign",
-    "if (x = 1) { f(); }",
-    "if (x === 1) { f(); }",
-);
-testLintExamples(
-    "no-constant-binary-expression",
-    "const x = {} || y;",
-    "const x = a || y;",
-);
-testLintExamples(
-    "no-constant-condition",
-    "if (true) { f(); }",
-    "if (x) { f(); }",
-);
-testLintExamples("no-control-regex", "const r = /\\x00/;", "const r = /abc/;");
-testLintExamples("no-debugger", "debugger;", "console.log('x');");
-testLintExamples(
-    "no-delete-var",
-    "var x; delete x;",
-    "const x={a:1}; delete x.a;",
-);
-testLintExamples(
-    "no-dupe-else-if",
-    "if(x) f(); else if(x) g();",
-    "if(x) f(); else if(y) g();",
-);
-testLintExamples(
-    "no-duplicate-case",
-    "switch(x){case 1: break; case 1: break;}",
-    "switch(x){case 1: break; case 2: break;}",
-);
-testLintExamples("no-empty", "if(x) {}", "if(x) { f(); }");
-testLintExamples("no-empty-character-class", "const r=/[]/;", "const r=/[a]/;");
-testLintExamples("no-empty-pattern", "const {} = x;", "const {a} = x;");
-testLintExamples(
-    "no-empty-static-block",
-    "class C {static {}}",
-    "class C {static {f();}}",
-);
-testLintExamples(
-    "no-ex-assign",
-    "try { f(); } catch(e) { e=2; }",
-    "try { f(); } catch(e) { console.log(e); }",
-);
-testLintExamples(
-    "no-extra-boolean-cast",
-    "if (Boolean(x)) f();",
-    "if (x) f();",
-);
-testLintExamples(
-    "no-fallthrough",
-    "switch(x){case 1: f(); case 2: g();}",
-    "switch(x){case 1: f(); break; case 2: g();}",
-);
-testLintExamples("no-global-assign", "undefined = 1;", "const x = undefined;");
-testLintExamples("no-invalid-regexp", "new RegExp('[');", "new RegExp('[a]');");
-testLintExamples("no-irregular-whitespace", "const x = 1;", "const x = 1;");
-testLintExamples(
-    "no-loss-of-precision",
-    "const x = 9007199254740993;",
-    "const x = 9007199254740991;",
-);
-testLintExamples(
-    "no-misleading-character-class",
-    "const r=/[Á]/;",
-    "const r=/[ABC]/;",
-);
-testParserRejection(
-    "no-nonoctal-decimal-escape",
-    "const s='\\8';",
-    "const s='8';",
-);
-testParserRejection("no-octal", "const x = 071;", "const x = 0o71;");
-testLintExamples(
-    "no-prototype-builtins",
-    "x.hasOwnProperty('a');",
-    "Object.hasOwn(x, 'a');",
-);
-testLintExamples("no-regex-spaces", "const r=/a  b/;", "const r=/a {2}b/;");
-testLintExamples("no-self-assign", "let x=1; x=x;", "let x=1; x=2;");
-testLintExamples(
-    "no-shadow-restricted-names",
-    "function f(undefined) { return undefined; }",
-    "function f(value) { return value; }",
-);
-testLintExamples("no-sparse-arrays", "const x = [1,,3];", "const x = [1,2,3];");
-testLintExamples(
-    "no-unassigned-vars",
-    "let x; console.log(x);",
-    "let x=1; console.log(x);",
-);
-testLintExamples(
-    "no-unexpected-multiline",
-    "const x = f\n[1].map(g);",
-    "const x = f;\n[1].map(g);",
-);
-testLintExamples(
-    "no-unsafe-finally",
-    "function f(){ try { return 1; } finally { return 2; } }",
-    "function f(){ try { return 1; } finally { console.log('done'); } }",
-);
-testLintExamples("no-unsafe-optional-chaining", "(x?.f)();", "x?.f();");
-testLintExamples("no-unused-labels", "label: f();", "while(x) { break; }");
-testLintExamples(
-    "no-unused-private-class-members",
-    "class C { #x=1; }",
-    "class C { #x=1; read(){return this.#x;} }",
-);
-testLintExamples(
-    "no-useless-assignment",
-    "let x=1; x=2; console.log(x);",
-    "let x=1; console.log(x); x=2; console.log(x);",
-);
-testLintExamples(
-    "no-useless-backreference",
-    "const r=/(a\\1)/;",
-    "const r=/(a)\\1/;",
-);
-testLintExamples(
-    "no-useless-catch",
-    "try { f(); } catch(e) { throw e; }",
-    "try { f(); } catch(e) { console.log(e); }",
-);
-testLintExamples("no-useless-escape", "const s='\\a';", "const s='a';");
-testLintExamples(
-    "preserve-caught-error",
-    "try { f(); } catch(e) { throw new Error('failed'); }",
-    "try { f(); } catch(e) { throw new Error('failed', {cause:e}); }",
-);
-testLintExamples(
-    "require-yield",
-    "function* f(){return 1;}",
-    "function* f(){yield 1;}",
-);
-testLintExamples("use-isnan", "x === NaN;", "Number.isNaN(x);");
-testLintExamples(
-    "valid-typeof",
-    "typeof x === 'strnig';",
-    "typeof x === 'string';",
-);
-testLintExamples("no-var", "var x=1;", "const x=1;");
-testLintExamples(
-    "prefer-const",
-    "let x=1; console.log(x);",
-    "const x=1; console.log(x);",
-);
-testLintExamples(
-    "prefer-rest-params",
-    "function f(){console.log(arguments);}",
-    "function f(...args){console.log(args);}",
-);
-testLintExamples("prefer-spread", "f.apply(null, args);", "f(...args);");
-testLintExamples(
-    "@typescript-eslint/await-thenable",
-    "async function f(){await 1;}",
-    "async function f(){await Promise.resolve(1);}",
-);
-testLintExamples(
-    "@typescript-eslint/no-array-constructor",
-    "const x = new Array(1,2);",
-    "const x = [1,2];",
-);
-testLintExamples(
-    "@typescript-eslint/no-array-delete",
-    "const x=[1,2]; delete x[0];",
-    "const x=[1,2]; x.splice(0,1);",
-);
-testLintExamples(
-    "@typescript-eslint/no-base-to-string",
-    "const x = {}.toString();",
-    "const x = (123).toString();",
-);
-testLintExamples(
-    "@typescript-eslint/no-confusing-void-expression",
-    "const x = console.log('x');",
-    "console.log('x');",
-);
-testLintExamples(
-    "@typescript-eslint/no-deprecated",
-    "/** @deprecated use next */\nfunction old(){}\nold();",
-    "function next(){}\nnext();",
-);
-testLintExamples(
-    "@typescript-eslint/no-duplicate-enum-values",
-    "enum E { A=1, B=1 }",
-    "enum E { A=1, B=2 }",
-);
-testLintExamples(
-    "@typescript-eslint/no-duplicate-type-constituents",
-    "type T = string | string;",
-    "type T = string | number;",
-);
-testLintExamples(
-    "@typescript-eslint/no-dynamic-delete",
-    "function f(x:Record<string,number>, k:string){delete x[k];}",
-    "function f(x:Record<string,number>){delete x['fixed'];}",
-);
-testLintExamples(
-    "@typescript-eslint/no-empty-object-type",
-    "type T = {};",
-    "type T = object;",
-);
-testLintExamples(
-    "@typescript-eslint/no-extra-non-null-assertion",
-    "declare const x: string | undefined; x!!;",
-    "declare const x: string | undefined; x!;",
-);
-testLintExamples(
-    "@typescript-eslint/no-extraneous-class",
-    "class C {}",
-    "class C { value=1; }",
-);
-testLintExamples(
-    "@typescript-eslint/no-floating-promises",
-    "Promise.resolve(1);",
-    "void Promise.resolve(1);",
-);
-testLintExamples(
-    "@typescript-eslint/no-for-in-array",
-    "for(const key in [1,2]) console.log(key);",
-    "for(const value of [1,2]) console.log(value);",
-);
-testLintExamples(
-    "@typescript-eslint/no-generated-empty-object-type",
-    "type T = Pick<{x:number}, never>;",
-    "type T = Pick<{x:number}, 'x'>;",
-);
-testLintExamples(
-    "@typescript-eslint/no-implied-eval",
-    "setTimeout('f()', 10);",
-    "setTimeout(()=>console.log('x'), 10);",
-);
-testLintExamples(
-    "@typescript-eslint/no-invalid-void-type",
-    "let x: void;",
-    "function f(): void {console.log('x');}",
-);
-testLintExamples(
-    "@typescript-eslint/no-meaningless-void-operator",
-    "void console.log('x');",
-    "void Promise.resolve(1);",
-);
-testLintExamples(
-    "@typescript-eslint/no-misused-new",
-    "interface I { new(): I; }",
-    "interface I { new(): object; }",
-);
-testLintExamples(
-    "@typescript-eslint/no-misused-promises",
-    "if(Promise.resolve(true)) console.log('x');",
-    "async function f(){if(await Promise.resolve(true)) console.log('x');}",
-);
-testLintExamples(
-    "@typescript-eslint/no-misused-spread",
-    "const x = {...Promise.resolve(1)};",
-    "const x = {...{a:1}};",
-);
-testLintExamples(
-    "@typescript-eslint/no-mixed-enums",
-    "enum E { A=1, B='b' }",
-    "enum E { A=1, B=2 }",
-);
-testLintExamples(
-    "@typescript-eslint/no-namespace",
-    "namespace X { export const x=1; }",
-    "export const x=1;",
-);
-testLintExamples(
-    "@typescript-eslint/no-non-null-asserted-nullish-coalescing",
-    "const x = Math.random() > .5 ? 'a' : undefined; const y=x! ?? 'a';",
-    "declare const x:string|undefined; const y=x ?? 'a';",
-);
-testLintExamples(
-    "@typescript-eslint/no-non-null-asserted-optional-chain",
-    "declare const x:{a:string}|undefined; x?.a!;",
-    "declare const x:{a:string}|undefined; x?.a;",
-);
-testLintExamples(
-    "@typescript-eslint/no-redundant-type-constituents",
-    "type T = string | any;",
-    "type T = string | number;",
-);
-testLintExamples(
-    "@typescript-eslint/no-require-imports",
-    "const fs = require('node:fs');",
-    "import fs from 'node:fs';",
-);
-testLintExamples(
-    "@typescript-eslint/no-this-alias",
-    "function f(){const self=this; return self;}",
-    "function f(){return this;}",
-);
-testLintExamples(
-    "@typescript-eslint/no-unnecessary-boolean-literal-compare",
-    "declare const x:boolean; if(x === true) console.log(x);",
-    "declare const x:boolean; if(x) console.log(x);",
-);
-testLintExamples(
-    "@typescript-eslint/no-unnecessary-condition",
-    "if('always') console.log('x');",
-    "declare const x:boolean; if(x) console.log('x');",
-);
-testLintExamples(
-    "@typescript-eslint/no-unnecessary-template-expression",
-    "const x = `${'hello'}`;",
-    "declare const y:string; const x = `hello ${y}`;",
-);
-testLintExamples(
-    "@typescript-eslint/no-unnecessary-type-arguments",
-    "function f<T=string>(){} f<string>();",
-    "function f<T=string>(){} f<number>();",
-);
-testLintExamples(
-    "@typescript-eslint/no-unnecessary-type-assertion",
-    "const x=1; const y=x as 1;",
-    "declare const x:unknown; const y=x as string;",
-);
-testLintExamples(
-    "@typescript-eslint/no-unnecessary-type-constraint",
-    "function f<T extends unknown>(x:T){return x;}",
-    "function f<T>(x:T){return x;}",
-);
-testLintExamples(
-    "@typescript-eslint/no-unnecessary-type-conversion",
-    "declare const x:string; String(x);",
-    "declare const x:number; String(x);",
-);
-testLintExamples(
-    "@typescript-eslint/no-unnecessary-type-parameters",
-    "function f<T extends string>(x:T):void {console.log(x);}",
-    "function f<T>(x:T):T {return x;}",
-);
-testLintExamples(
-    "@typescript-eslint/no-unsafe-argument",
-    "declare const x:any; function f(n:number){} f(x);",
-    "function f(n:number){} f(1);",
-);
-testLintExamples(
-    "@typescript-eslint/no-unsafe-assignment",
-    "declare const x:any; const y:number=x;",
-    "const y:number=1;",
-);
-testLintExamples(
-    "@typescript-eslint/no-unsafe-declaration-merging",
-    "interface C {x:number;} class C {}",
-    "interface I {x:number;} class C {x=1;}",
-);
-testLintExamples(
-    "@typescript-eslint/no-unsafe-enum-comparison",
-    "enum E {A=1} declare const e:E; e === 1;",
-    "enum E {A=1} declare const e:E; e === E.A;",
-);
-testLintExamples(
-    "@typescript-eslint/no-unsafe-function-type",
-    "declare const f:Function;",
-    "declare const f:()=>void;",
-);
-testLintExamples(
-    "@typescript-eslint/no-unsafe-member-access",
-    "declare const x:any; x.foo;",
-    "declare const x:{foo:number}; x.foo;",
-);
-testLintExamples(
-    "@typescript-eslint/no-unsafe-return",
-    "declare const x:any; function f():number{return x;}",
-    "function f():number{return 1;}",
-);
-testLintExamples(
-    "@typescript-eslint/no-unsafe-unary-minus",
-    "declare const x:string; -x;",
-    "declare const x:number; -x;",
-);
-testLintExamples(
-    "@typescript-eslint/no-unused-expressions",
-    "1;",
-    "console.log(1);",
-);
-testLintExamples(
-    "@typescript-eslint/no-unused-vars",
-    "const x=1;",
-    "export const x=1;",
-);
-testLintExamples(
-    "@typescript-eslint/no-useless-constructor",
-    "class C {constructor(){}}",
-    "class C {constructor(){console.log('x');}}",
-);
-testLintExamples(
-    "@typescript-eslint/no-useless-default-assignment",
-    "const { x = 1 } = { x: 2 };",
-    "const { x = 1 } = {} as { x?: number }; ",
-);
-testLintExamples(
-    "@typescript-eslint/no-wrapper-object-types",
-    "let x:String;",
-    "let x:string;",
-);
-testLintExamples(
-    "@typescript-eslint/only-throw-error",
-    "throw 'failed';",
-    "throw new Error('failed');",
-);
-testLintExamples(
-    "@typescript-eslint/prefer-as-const",
-    "const x = 'hello' as 'hello';",
-    "const x = 'hello' as const;",
-);
-testLintExamples(
-    "@typescript-eslint/prefer-literal-enum-member",
-    "enum E {A=Math.random()}",
-    "enum E {A=1}",
-);
-testLintExamples(
-    "@typescript-eslint/prefer-namespace-keyword",
-    "module X { export const n=1; }",
-    "namespace X { export const n=1; }",
-);
-testLintExamples(
-    "@typescript-eslint/prefer-promise-reject-errors",
-    "Promise.reject('failed');",
-    "Promise.reject(new Error('failed'));",
-);
-testLintExamples(
-    "@typescript-eslint/prefer-reduce-type-parameter",
-    "[1].reduce((a,n)=>a+n, 0 as number);",
-    "[1].reduce<number>((a,n)=>a+n, 0);",
-);
-testLintExamples(
-    "@typescript-eslint/prefer-return-this-type",
-    "class C {f(): C {return this;}}",
-    "class C {f(): this {return this;}}",
-);
-testLintExamples(
-    "@typescript-eslint/related-getter-setter-pairs",
-    "class C {get x():number{return 1;} set x(value:string){}}",
-    "class C {get x():number{return 1;} set x(value:number){}}",
-);
-testLintExamples(
-    "@typescript-eslint/require-await",
-    "async function f(){return 1;}",
-    "async function f(){return await Promise.resolve(1);}",
-);
-testLintExamples(
-    "@typescript-eslint/restrict-plus-operands",
-    "const x=1 + 'a';",
-    "const x='1' + 'a';",
-);
-testLintExamples(
-    "@typescript-eslint/restrict-template-expressions",
-    "const x=`${{}}`;",
-    "const x=`${'hello'}`;",
-);
-testLintExamples(
-    "@typescript-eslint/return-await",
-    "async function f(){try{return Promise.resolve(1);}catch(e){throw e;}}",
-    "async function f(){try{return await Promise.resolve(1);}catch(e){throw e;}}",
-);
-testLintExamples(
-    "@typescript-eslint/triple-slash-reference",
-    '/// <reference path="other.ts" />\nexport {};',
-    "export {};",
-);
-testLintExamples(
-    "@typescript-eslint/unbound-method",
-    "class C {x=1; f(){return this.x;}} const c=new C(); const f=c.f;",
-    "class C {x=1; f(){return this.x;}} const c=new C(); const f=()=>c.f();",
-);
-testLintExamples(
-    "@typescript-eslint/unified-signatures",
-    "function f(x:string):void; function f(x:number):void; function f(x:string|number){}",
-    "function f(x:string|number):void {}",
-);
-testLintExamples(
-    "@typescript-eslint/use-unknown-in-catch-callback-variable",
-    "Promise.resolve(1).catch(e=>console.log(e));",
-    "Promise.resolve(1).catch((e:unknown)=>console.log(e));",
-);
-testLintExamples(
-    "@typescript-eslint/adjacent-overload-signatures",
-    "interface I { f(x:string):void; g():void; f(x:number):void; }",
-    "interface I { f(x:string):void; f(x:number):void; g():void; }",
-);
-testLintExamples(
-    "@typescript-eslint/array-type",
-    "const x:Array<number>=[];",
-    "const x:number[]=[];",
-);
-testLintExamples(
-    "@typescript-eslint/ban-tslint-comment",
-    "// tslint:disable-next-line\nconst x=1;",
-    "const x=1;",
-);
-testLintExamples(
-    "@typescript-eslint/class-literal-property-style",
-    "class C {get x(){return 1;}}",
-    "class C {readonly x=1;}",
-);
-testLintExamples(
-    "@typescript-eslint/consistent-generic-constructors",
-    "const x:Map<string,number>=new Map();",
-    "const x=new Map<string,number>();",
-);
-testLintExamples(
-    "@typescript-eslint/consistent-indexed-object-style",
-    "type T = {[key:string]:number};",
-    "type T = Record<string,number>;",
-);
-testLintExamples(
-    "@typescript-eslint/consistent-type-definitions",
-    "type T = {x:number};",
-    "interface T {x:number;}",
-);
-testLintExamples(
-    "@typescript-eslint/dot-notation",
-    "const x={a:1}; x['a'];",
-    "const x={a:1}; x.a;",
-);
-testLintExamples(
-    "@typescript-eslint/no-confusing-non-null-assertion",
-    "declare const x:number|undefined; const y=1; x! == y;",
-    "declare const x:number|undefined; const y=1; x === y;",
-);
-testLintExamples(
-    "@typescript-eslint/no-empty-function",
-    "function f(){}",
-    "function f(){console.log('x');}",
-);
-testLintExamples(
-    "@typescript-eslint/no-inferrable-types",
-    "const x:number=1;",
-    "const x=1;",
-);
-testLintExamples(
-    "@typescript-eslint/non-nullable-type-assertion-style",
-    "declare const x:string|undefined; const y=x as string;",
-    "declare const x:string|undefined; const y=x!;",
-);
-testLintExamples(
-    "@typescript-eslint/prefer-find",
-    "const x=[1,2].filter(n=>n>1)[0];",
-    "const x=[1,2].find(n=>n>1);",
-);
-testLintExamples(
-    "@typescript-eslint/prefer-for-of",
-    "const xs=[1,2]; for(let i=0;i<xs.length;i++){console.log(xs[i]);}",
-    "const xs=[1,2]; for(const x of xs){console.log(x);}",
-);
-testLintExamples(
-    "@typescript-eslint/prefer-function-type",
-    "interface F {(x:number):number;}",
-    "type F = (x:number)=>number;",
-);
-testLintExamples(
-    "@typescript-eslint/prefer-includes",
-    "const xs=[1,2]; xs.indexOf(1) !== -1;",
-    "const xs=[1,2]; xs.includes(1);",
-);
-testLintExamples(
-    "@typescript-eslint/prefer-nullish-coalescing",
-    "declare const x:string|undefined; const y=x || 'fallback';",
-    "declare const x:string|undefined; const y=x ?? 'fallback';",
-);
-testLintExamples(
-    "@typescript-eslint/prefer-optional-chain",
-    "declare const x:{a:number}|undefined; const y=x && x.a;",
-    "declare const x:{a:number}|undefined; const y=x?.a;",
-);
-testLintExamples(
-    "@typescript-eslint/prefer-regexp-exec",
-    "const x='abc'.match(/a/);",
-    "const x=/a/.exec('abc');",
-);
-testLintExamples(
-    "@typescript-eslint/prefer-string-starts-ends-with",
-    "declare const x:string; x.indexOf('a') === 0;",
-    "declare const x:string; x.startsWith('a');",
-);
+const RULE_EXAMPLES = [
+    {
+        ruleId: "for-direction",
+        rejected: "for(let i=0;i<3;i--) { console.log(i); }",
+        accepted: "for(let i=0;i<3;i++) { console.log(i); }",
+    },
+    {
+        ruleId: "no-async-promise-executor",
+        rejected: "new Promise(async resolve => { resolve(1); });",
+        accepted: "new Promise(resolve => { resolve(1); });",
+    },
+    {
+        ruleId: "no-case-declarations",
+        rejected: "switch(x) { case 1: let a=2; break; }",
+        accepted: "switch(x) { case 1: { let a=2; break; } }",
+    },
+    {
+        ruleId: "no-compare-neg-zero",
+        rejected: "x === -0;",
+        accepted: "Object.is(x, -0);",
+    },
+    {
+        ruleId: "no-cond-assign",
+        rejected: "if (x = 1) { f(); }",
+        accepted: "if (x === 1) { f(); }",
+    },
+    {
+        ruleId: "no-constant-binary-expression",
+        rejected: "const x = {} || y;",
+        accepted: "const x = a || y;",
+    },
+    {
+        ruleId: "no-constant-condition",
+        rejected: "if (true) { f(); }",
+        accepted: "if (x) { f(); }",
+    },
+    {
+        ruleId: "no-control-regex",
+        rejected: "const r = /\\x00/;",
+        accepted: "const r = /abc/;",
+    },
+    {
+        ruleId: "no-debugger",
+        rejected: "debugger;",
+        accepted: "console.log('x');",
+    },
+    {
+        ruleId: "no-delete-var",
+        rejected: "var x; delete x;",
+        accepted: "const x={a:1}; delete x.a;",
+    },
+    {
+        ruleId: "no-dupe-else-if",
+        rejected: "if(x) f(); else if(x) g();",
+        accepted: "if(x) f(); else if(y) g();",
+    },
+    {
+        ruleId: "no-duplicate-case",
+        rejected: "switch(x){case 1: break; case 1: break;}",
+        accepted: "switch(x){case 1: break; case 2: break;}",
+    },
+    { ruleId: "no-empty", rejected: "if(x) {}", accepted: "if(x) { f(); }" },
+    {
+        ruleId: "no-empty-character-class",
+        rejected: "const r=/[]/;",
+        accepted: "const r=/[a]/;",
+    },
+    {
+        ruleId: "no-empty-pattern",
+        rejected: "const {} = x;",
+        accepted: "const {a} = x;",
+    },
+    {
+        ruleId: "no-empty-static-block",
+        rejected: "class C {static {}}",
+        accepted: "class C {static {f();}}",
+    },
+    {
+        ruleId: "no-ex-assign",
+        rejected: "try { f(); } catch(e) { e=2; }",
+        accepted: "try { f(); } catch(e) { console.log(e); }",
+    },
+    {
+        ruleId: "no-extra-boolean-cast",
+        rejected: "if (Boolean(x)) f();",
+        accepted: "if (x) f();",
+    },
+    {
+        ruleId: "no-fallthrough",
+        rejected: "switch(x){case 1: f(); case 2: g();}",
+        accepted: "switch(x){case 1: f(); break; case 2: g();}",
+    },
+    {
+        ruleId: "no-global-assign",
+        rejected: "undefined = 1;",
+        accepted: "const x = undefined;",
+    },
+    {
+        ruleId: "no-invalid-regexp",
+        rejected: "new RegExp('[');",
+        accepted: "new RegExp('[a]');",
+    },
+    {
+        ruleId: "no-irregular-whitespace",
+        rejected: "const x = 1;",
+        accepted: "const x = 1;",
+    },
+    {
+        ruleId: "no-loss-of-precision",
+        rejected: "const x = 9007199254740993;",
+        accepted: "const x = 9007199254740991;",
+    },
+    {
+        ruleId: "no-misleading-character-class",
+        rejected: "const r=/[Á]/;",
+        accepted: "const r=/[ABC]/;",
+    },
+    {
+        ruleId: "no-prototype-builtins",
+        rejected: "x.hasOwnProperty('a');",
+        accepted: "Object.hasOwn(x, 'a');",
+    },
+    {
+        ruleId: "no-regex-spaces",
+        rejected: "const r=/a  b/;",
+        accepted: "const r=/a {2}b/;",
+    },
+    {
+        ruleId: "no-self-assign",
+        rejected: "let x=1; x=x;",
+        accepted: "let x=1; x=2;",
+    },
+    {
+        ruleId: "no-shadow-restricted-names",
+        rejected: "function f(undefined) { return undefined; }",
+        accepted: "function f(value) { return value; }",
+    },
+    {
+        ruleId: "no-sparse-arrays",
+        rejected: "const x = [1,,3];",
+        accepted: "const x = [1,2,3];",
+    },
+    {
+        ruleId: "no-unassigned-vars",
+        rejected: "let x; console.log(x);",
+        accepted: "let x=1; console.log(x);",
+    },
+    {
+        ruleId: "no-unexpected-multiline",
+        rejected: "const x = f\n[1].map(g);",
+        accepted: "const x = f;\n[1].map(g);",
+    },
+    {
+        ruleId: "no-unsafe-finally",
+        rejected: "function f(){ try { return 1; } finally { return 2; } }",
+        accepted:
+            "function f(){ try { return 1; } finally { console.log('done'); } }",
+    },
+    {
+        ruleId: "no-unsafe-optional-chaining",
+        rejected: "(x?.f)();",
+        accepted: "x?.f();",
+    },
+    {
+        ruleId: "no-unused-labels",
+        rejected: "label: f();",
+        accepted: "while(x) { break; }",
+    },
+    {
+        ruleId: "no-unused-private-class-members",
+        rejected: "class C { #x=1; }",
+        accepted: "class C { #x=1; read(){return this.#x;} }",
+    },
+    {
+        ruleId: "no-useless-assignment",
+        rejected: "let x=1; x=2; console.log(x);",
+        accepted: "let x=1; console.log(x); x=2; console.log(x);",
+    },
+    {
+        ruleId: "no-useless-backreference",
+        rejected: "const r=/(a\\1)/;",
+        accepted: "const r=/(a)\\1/;",
+    },
+    {
+        ruleId: "no-useless-catch",
+        rejected: "try { f(); } catch(e) { throw e; }",
+        accepted: "try { f(); } catch(e) { console.log(e); }",
+    },
+    {
+        ruleId: "no-useless-escape",
+        rejected: "const s='\\a';",
+        accepted: "const s='a';",
+    },
+    {
+        ruleId: "preserve-caught-error",
+        rejected: "try { f(); } catch(e) { throw new Error('failed'); }",
+        accepted:
+            "try { f(); } catch(e) { throw new Error('failed', {cause:e}); }",
+    },
+    {
+        ruleId: "require-yield",
+        rejected: "function* f(){return 1;}",
+        accepted: "function* f(){yield 1;}",
+    },
+    {
+        ruleId: "use-isnan",
+        rejected: "x === NaN;",
+        accepted: "Number.isNaN(x);",
+    },
+    {
+        ruleId: "valid-typeof",
+        rejected: "typeof x === 'strnig';",
+        accepted: "typeof x === 'string';",
+    },
+    { ruleId: "no-var", rejected: "var x=1;", accepted: "const x=1;" },
+    {
+        ruleId: "prefer-const",
+        rejected: "let x=1; console.log(x);",
+        accepted: "const x=1; console.log(x);",
+    },
+    {
+        ruleId: "prefer-rest-params",
+        rejected: "function f(){console.log(arguments);}",
+        accepted: "function f(...args){console.log(args);}",
+    },
+    {
+        ruleId: "prefer-spread",
+        rejected: "f.apply(null, args);",
+        accepted: "f(...args);",
+    },
+    {
+        ruleId: "@typescript-eslint/await-thenable",
+        rejected: "async function f(){await 1;}",
+        accepted: "async function f(){await Promise.resolve(1);}",
+    },
+    {
+        ruleId: "@typescript-eslint/no-array-constructor",
+        rejected: "const x = new Array(1,2);",
+        accepted: "const x = [1,2];",
+    },
+    {
+        ruleId: "@typescript-eslint/no-array-delete",
+        rejected: "const x=[1,2]; delete x[0];",
+        accepted: "const x=[1,2]; x.splice(0,1);",
+    },
+    {
+        ruleId: "@typescript-eslint/no-base-to-string",
+        rejected: "const x = {}.toString();",
+        accepted: "const x = (123).toString();",
+    },
+    {
+        ruleId: "@typescript-eslint/no-confusing-void-expression",
+        rejected: "const x = console.log('x');",
+        accepted: "console.log('x');",
+    },
+    {
+        ruleId: "@typescript-eslint/no-deprecated",
+        rejected: "/** @deprecated use next */\nfunction old(){}\nold();",
+        accepted: "function next(){}\nnext();",
+    },
+    {
+        ruleId: "@typescript-eslint/no-duplicate-enum-values",
+        rejected: "enum E { A=1, B=1 }",
+        accepted: "enum E { A=1, B=2 }",
+    },
+    {
+        ruleId: "@typescript-eslint/no-duplicate-type-constituents",
+        rejected: "type T = string | string;",
+        accepted: "type T = string | number;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-dynamic-delete",
+        rejected: "function f(x:Record<string,number>, k:string){delete x[k];}",
+        accepted: "function f(x:Record<string,number>){delete x['fixed'];}",
+    },
+    {
+        ruleId: "@typescript-eslint/no-empty-object-type",
+        rejected: "type T = {};",
+        accepted: "type T = object;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-extra-non-null-assertion",
+        rejected: "declare const x: string | undefined; x!!;",
+        accepted: "declare const x: string | undefined; x!;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-extraneous-class",
+        rejected: "class C {}",
+        accepted: "class C { value=1; }",
+    },
+    {
+        ruleId: "@typescript-eslint/no-floating-promises",
+        rejected: "Promise.resolve(1);",
+        accepted: "void Promise.resolve(1);",
+    },
+    {
+        ruleId: "@typescript-eslint/no-for-in-array",
+        rejected: "for(const key in [1,2]) console.log(key);",
+        accepted: "for(const value of [1,2]) console.log(value);",
+    },
+    {
+        ruleId: "@typescript-eslint/no-generated-empty-object-type",
+        rejected: "type T = Pick<{x:number}, never>;",
+        accepted: "type T = Pick<{x:number}, 'x'>;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-implied-eval",
+        rejected: "setTimeout('f()', 10);",
+        accepted: "setTimeout(()=>console.log('x'), 10);",
+    },
+    {
+        ruleId: "@typescript-eslint/no-invalid-void-type",
+        rejected: "let x: void;",
+        accepted: "function f(): void {console.log('x');}",
+    },
+    {
+        ruleId: "@typescript-eslint/no-meaningless-void-operator",
+        rejected: "void console.log('x');",
+        accepted: "void Promise.resolve(1);",
+    },
+    {
+        ruleId: "@typescript-eslint/no-misused-new",
+        rejected: "interface I { new(): I; }",
+        accepted: "interface I { new(): object; }",
+    },
+    {
+        ruleId: "@typescript-eslint/no-misused-promises",
+        rejected: "if(Promise.resolve(true)) console.log('x');",
+        accepted:
+            "async function f(){if(await Promise.resolve(true)) console.log('x');}",
+    },
+    {
+        ruleId: "@typescript-eslint/no-misused-spread",
+        rejected: "const x = {...Promise.resolve(1)};",
+        accepted: "const x = {...{a:1}};",
+    },
+    {
+        ruleId: "@typescript-eslint/no-mixed-enums",
+        rejected: "enum E { A=1, B='b' }",
+        accepted: "enum E { A=1, B=2 }",
+    },
+    {
+        ruleId: "@typescript-eslint/no-namespace",
+        rejected: "namespace X { export const x=1; }",
+        accepted: "export const x=1;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-non-null-asserted-nullish-coalescing",
+        rejected:
+            "const x = Math.random() > .5 ? 'a' : undefined; const y=x! ?? 'a';",
+        accepted: "declare const x:string|undefined; const y=x ?? 'a';",
+    },
+    {
+        ruleId: "@typescript-eslint/no-non-null-asserted-optional-chain",
+        rejected: "declare const x:{a:string}|undefined; x?.a!;",
+        accepted: "declare const x:{a:string}|undefined; x?.a;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-redundant-type-constituents",
+        rejected: "type T = string | any;",
+        accepted: "type T = string | number;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-require-imports",
+        rejected: "const fs = require('node:fs');",
+        accepted: "import fs from 'node:fs';",
+    },
+    {
+        ruleId: "@typescript-eslint/no-this-alias",
+        rejected: "function f(){const self=this; return self;}",
+        accepted: "function f(){return this;}",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unnecessary-boolean-literal-compare",
+        rejected: "declare const x:boolean; if(x === true) console.log(x);",
+        accepted: "declare const x:boolean; if(x) console.log(x);",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unnecessary-condition",
+        rejected: "if('always') console.log('x');",
+        accepted: "declare const x:boolean; if(x) console.log('x');",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unnecessary-template-expression",
+        rejected: "const x = `${'hello'}`;",
+        accepted: "declare const y:string; const x = `hello ${y}`;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unnecessary-type-arguments",
+        rejected: "function f<T=string>(){} f<string>();",
+        accepted: "function f<T=string>(){} f<number>();",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unnecessary-type-assertion",
+        rejected: "const x=1; const y=x as 1;",
+        accepted: "declare const x:unknown; const y=x as string;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unnecessary-type-constraint",
+        rejected: "function f<T extends unknown>(x:T){return x;}",
+        accepted: "function f<T>(x:T){return x;}",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unnecessary-type-conversion",
+        rejected: "declare const x:string; String(x);",
+        accepted: "declare const x:number; String(x);",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unnecessary-type-parameters",
+        rejected: "function f<T extends string>(x:T):void {console.log(x);}",
+        accepted: "function f<T>(x:T):T {return x;}",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unsafe-argument",
+        rejected: "declare const x:any; function f(n:number){} f(x);",
+        accepted: "function f(n:number){} f(1);",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unsafe-assignment",
+        rejected: "declare const x:any; const y:number=x;",
+        accepted: "const y:number=1;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unsafe-declaration-merging",
+        rejected: "interface C {x:number;} class C {}",
+        accepted: "interface I {x:number;} class C {x=1;}",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unsafe-enum-comparison",
+        rejected: "enum E {A=1} declare const e:E; e === 1;",
+        accepted: "enum E {A=1} declare const e:E; e === E.A;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unsafe-function-type",
+        rejected: "declare const f:Function;",
+        accepted: "declare const f:()=>void;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unsafe-member-access",
+        rejected: "declare const x:any; x.foo;",
+        accepted: "declare const x:{foo:number}; x.foo;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unsafe-return",
+        rejected: "declare const x:any; function f():number{return x;}",
+        accepted: "function f():number{return 1;}",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unsafe-unary-minus",
+        rejected: "declare const x:string; -x;",
+        accepted: "declare const x:number; -x;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unused-expressions",
+        rejected: "1;",
+        accepted: "console.log(1);",
+    },
+    {
+        ruleId: "@typescript-eslint/no-unused-vars",
+        rejected: "const x=1;",
+        accepted: "export const x=1;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-useless-constructor",
+        rejected: "class C {constructor(){}}",
+        accepted: "class C {constructor(){console.log('x');}}",
+    },
+    {
+        ruleId: "@typescript-eslint/no-useless-default-assignment",
+        rejected: "const { x = 1 } = { x: 2 };",
+        accepted: "const { x = 1 } = {} as { x?: number }; ",
+    },
+    {
+        ruleId: "@typescript-eslint/no-wrapper-object-types",
+        rejected: "let x:String;",
+        accepted: "let x:string;",
+    },
+    {
+        ruleId: "@typescript-eslint/only-throw-error",
+        rejected: "throw 'failed';",
+        accepted: "throw new Error('failed');",
+    },
+    {
+        ruleId: "@typescript-eslint/prefer-as-const",
+        rejected: "const x = 'hello' as 'hello';",
+        accepted: "const x = 'hello' as const;",
+    },
+    {
+        ruleId: "@typescript-eslint/prefer-literal-enum-member",
+        rejected: "enum E {A=Math.random()}",
+        accepted: "enum E {A=1}",
+    },
+    {
+        ruleId: "@typescript-eslint/prefer-namespace-keyword",
+        rejected: "module X { export const n=1; }",
+        accepted: "namespace X { export const n=1; }",
+    },
+    {
+        ruleId: "@typescript-eslint/prefer-promise-reject-errors",
+        rejected: "Promise.reject('failed');",
+        accepted: "Promise.reject(new Error('failed'));",
+    },
+    {
+        ruleId: "@typescript-eslint/prefer-reduce-type-parameter",
+        rejected: "[1].reduce((a,n)=>a+n, 0 as number);",
+        accepted: "[1].reduce<number>((a,n)=>a+n, 0);",
+    },
+    {
+        ruleId: "@typescript-eslint/prefer-return-this-type",
+        rejected: "class C {f(): C {return this;}}",
+        accepted: "class C {f(): this {return this;}}",
+    },
+    {
+        ruleId: "@typescript-eslint/related-getter-setter-pairs",
+        rejected: "class C {get x():number{return 1;} set x(value:string){}}",
+        accepted: "class C {get x():number{return 1;} set x(value:number){}}",
+    },
+    {
+        ruleId: "@typescript-eslint/require-await",
+        rejected: "async function f(){return 1;}",
+        accepted: "async function f(){return await Promise.resolve(1);}",
+    },
+    {
+        ruleId: "@typescript-eslint/restrict-plus-operands",
+        rejected: "const x=1 + 'a';",
+        accepted: "const x='1' + 'a';",
+    },
+    {
+        ruleId: "@typescript-eslint/restrict-template-expressions",
+        rejected: "const x=`${{}}`;",
+        accepted: "const x=`${'hello'}`;",
+    },
+    {
+        ruleId: "@typescript-eslint/return-await",
+        rejected:
+            "async function f(){try{return Promise.resolve(1);}catch(e){throw e;}}",
+        accepted:
+            "async function f(){try{return await Promise.resolve(1);}catch(e){throw e;}}",
+    },
+    {
+        ruleId: "@typescript-eslint/triple-slash-reference",
+        rejected: '/// <reference path="other.ts" />\nexport {};',
+        accepted: "export {};",
+    },
+    {
+        ruleId: "@typescript-eslint/unbound-method",
+        rejected:
+            "class C {x=1; f(){return this.x;}} const c=new C(); const f=c.f;",
+        accepted:
+            "class C {x=1; f(){return this.x;}} const c=new C(); const f=()=>c.f();",
+    },
+    {
+        ruleId: "@typescript-eslint/unified-signatures",
+        rejected:
+            "function f(x:string):void; function f(x:number):void; function f(x:string|number){}",
+        accepted: "function f(x:string|number):void {}",
+    },
+    {
+        ruleId: "@typescript-eslint/use-unknown-in-catch-callback-variable",
+        rejected: "Promise.resolve(1).catch(e=>console.log(e));",
+        accepted: "Promise.resolve(1).catch((e:unknown)=>console.log(e));",
+    },
+    {
+        ruleId: "@typescript-eslint/adjacent-overload-signatures",
+        rejected:
+            "interface I { f(x:string):void; g():void; f(x:number):void; }",
+        accepted:
+            "interface I { f(x:string):void; f(x:number):void; g():void; }",
+    },
+    {
+        ruleId: "@typescript-eslint/array-type",
+        rejected: "const x:Array<number>=[];",
+        accepted: "const x:number[]=[];",
+    },
+    {
+        ruleId: "@typescript-eslint/ban-tslint-comment",
+        rejected: "// tslint:disable-next-line\nconst x=1;",
+        accepted: "const x=1;",
+    },
+    {
+        ruleId: "@typescript-eslint/class-literal-property-style",
+        rejected: "class C {get x(){return 1;}}",
+        accepted: "class C {readonly x=1;}",
+    },
+    {
+        ruleId: "@typescript-eslint/consistent-generic-constructors",
+        rejected: "const x:Map<string,number>=new Map();",
+        accepted: "const x=new Map<string,number>();",
+    },
+    {
+        ruleId: "@typescript-eslint/consistent-indexed-object-style",
+        rejected: "type T = {[key:string]:number};",
+        accepted: "type T = Record<string,number>;",
+    },
+    {
+        ruleId: "@typescript-eslint/consistent-type-definitions",
+        rejected: "type T = {x:number};",
+        accepted: "interface T {x:number;}",
+    },
+    {
+        ruleId: "@typescript-eslint/dot-notation",
+        rejected: "const x={a:1}; x['a'];",
+        accepted: "const x={a:1}; x.a;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-confusing-non-null-assertion",
+        rejected: "declare const x:number|undefined; const y=1; x! == y;",
+        accepted: "declare const x:number|undefined; const y=1; x === y;",
+    },
+    {
+        ruleId: "@typescript-eslint/no-empty-function",
+        rejected: "function f(){}",
+        accepted: "function f(){console.log('x');}",
+    },
+    {
+        ruleId: "@typescript-eslint/no-inferrable-types",
+        rejected: "const x:number=1;",
+        accepted: "const x=1;",
+    },
+    {
+        ruleId: "@typescript-eslint/non-nullable-type-assertion-style",
+        rejected: "declare const x:string|undefined; const y=x as string;",
+        accepted: "declare const x:string|undefined; const y=x!;",
+    },
+    {
+        ruleId: "@typescript-eslint/prefer-find",
+        rejected: "const x=[1,2].filter(n=>n>1)[0];",
+        accepted: "const x=[1,2].find(n=>n>1);",
+    },
+    {
+        ruleId: "@typescript-eslint/prefer-for-of",
+        rejected:
+            "const xs=[1,2]; for(let i=0;i<xs.length;i++){console.log(xs[i]);}",
+        accepted: "const xs=[1,2]; for(const x of xs){console.log(x);}",
+    },
+    {
+        ruleId: "@typescript-eslint/prefer-function-type",
+        rejected: "interface F {(x:number):number;}",
+        accepted: "type F = (x:number)=>number;",
+    },
+    {
+        ruleId: "@typescript-eslint/prefer-includes",
+        rejected: "const xs=[1,2]; xs.indexOf(1) !== -1;",
+        accepted: "const xs=[1,2]; xs.includes(1);",
+    },
+    {
+        ruleId: "@typescript-eslint/prefer-nullish-coalescing",
+        rejected: "declare const x:string|undefined; const y=x || 'fallback';",
+        accepted: "declare const x:string|undefined; const y=x ?? 'fallback';",
+    },
+    {
+        ruleId: "@typescript-eslint/prefer-optional-chain",
+        rejected: "declare const x:{a:number}|undefined; const y=x && x.a;",
+        accepted: "declare const x:{a:number}|undefined; const y=x?.a;",
+    },
+    {
+        ruleId: "@typescript-eslint/prefer-regexp-exec",
+        rejected: "const x='abc'.match(/a/);",
+        accepted: "const x=/a/.exec('abc');",
+    },
+    {
+        ruleId: "@typescript-eslint/prefer-string-starts-ends-with",
+        rejected: "declare const x:string; x.indexOf('a') === 0;",
+        accepted: "declare const x:string; x.startsWith('a');",
+    },
+];
+
+for (const { ruleId, rejected, accepted } of RULE_EXAMPLES) {
+    void test(`${ruleId} rejects its violation`, async () => {
+        const diagnostics = await lintRule(ruleId, rejected);
+        assert.ok(
+            diagnostics.length > 0,
+            `${ruleId} did not reject its violation`,
+        );
+        assert.ok(
+            diagnostics.every((diagnostic) => diagnostic.id === ruleId),
+            JSON.stringify(diagnostics),
+        );
+    });
+    void test(`${ruleId} accepts its control`, async () => {
+        const diagnostics = await lintRule(ruleId, accepted);
+        assert.deepEqual(diagnostics, []);
+    });
+}
+
+void test("no-nonoctal-decimal-escape syntax is rejected by the parser", async () => {
+    const diagnostics = await lintParserRestriction(
+        "no-nonoctal-decimal-escape",
+        "const s='\\8';",
+    );
+    assert.ok(
+        diagnostics.some(
+            (diagnostic) =>
+                diagnostic.fatal === true && diagnostic.id === "(no rule)",
+        ),
+        JSON.stringify(diagnostics),
+    );
+});
+void test("no-nonoctal-decimal-escape control is accepted by the parser", async () => {
+    const diagnostics = await lintParserRestriction(
+        "no-nonoctal-decimal-escape",
+        "const s='8';",
+    );
+    assert.deepEqual(diagnostics, []);
+});
+
+void test("no-octal syntax is rejected by the parser", async () => {
+    const diagnostics = await lintParserRestriction(
+        "no-octal",
+        "const x = 071;",
+    );
+    assert.ok(
+        diagnostics.some(
+            (diagnostic) =>
+                diagnostic.fatal === true && diagnostic.id === "(no rule)",
+        ),
+        JSON.stringify(diagnostics),
+    );
+});
+void test("no-octal control is accepted by the parser", async () => {
+    const diagnostics = await lintParserRestriction(
+        "no-octal",
+        "const x = 0o71;",
+    );
+    assert.deepEqual(diagnostics, []);
+});

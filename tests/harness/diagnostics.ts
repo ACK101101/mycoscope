@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
-import { describe, test } from "node:test";
 
-// Both adapters use this format. `id` is an ESLint rule name or a TypeScript
+// The ESLint and TypeScript adapters use this format. `id` is a rule name or a
 // diagnostic code, such as TS7006. `text` is the source covered by the diagnostic.
 export interface ExpectedDiagnostic {
     readonly id: string;
@@ -16,13 +15,7 @@ export interface ExpectedDiagnostic {
 
 export interface ActualDiagnostic extends ExpectedDiagnostic {
     readonly message: string;
-}
-
-export interface TestCase {
-    readonly name: string;
-    readonly code: string;
-    // An empty array requires the snippet to produce no diagnostics.
-    readonly expect: readonly ExpectedDiagnostic[];
+    readonly fatal?: boolean;
 }
 
 // Compare the diagnostic ID, location, and source text separately from its message.
@@ -83,18 +76,4 @@ export function assertDiagnosticsMatch(
             assert.equal(actual[i]?.message, want.message);
         }
     }
-}
-
-export function runCases(
-    suite: string,
-    cases: readonly TestCase[],
-    run: (code: string) => Promise<readonly ActualDiagnostic[]>,
-): void {
-    void describe(suite, () => {
-        for (const { name, code, expect } of cases) {
-            void test(name, async () => {
-                assertDiagnosticsMatch(await run(code), expect);
-            });
-        }
-    });
 }

@@ -1,17 +1,11 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
 import { ESLint, type Linter } from "eslint";
 import type { ReadonlyDeep } from "type-fest";
 import {
-    requireRuleCases,
+    diagnosticCoverage,
+    type DiagnosticCoverage,
     syntaxRestrictionSettings,
 } from "./rule-coverage.ts";
-import {
-    offsetFromLocation,
-    runCases,
-    type TestCase,
-    type ActualDiagnostic,
-} from "./test-case.ts";
+import { offsetFromLocation, type ActualDiagnostic } from "./diagnostics.ts";
 
 // Harness workaround: give in-memory source a path so ESLint applies Mycoscope's
 // lint settings. No file is written. allowDefaultProject below lets the TypeScript
@@ -105,112 +99,83 @@ function toActualDiagnostic(
         text: code.slice(start, end),
         severity: message.severity,
         message: message.message,
+        ...(message.fatal === undefined ? {} : { fatal: message.fatal }),
     };
 }
 
-export function testLintRule(ruleId: string, cases: readonly TestCase[]): void {
-    requireRuleCases(ruleId, cases);
-    runLintCases(ruleId, cases, createSingleRuleLinter(ruleId));
+const engines: Map<string, Promise<ESLint>> = new Map<
+    string,
+    Promise<ESLint>
+>();
+const coverage: DiagnosticCoverage[] = [];
+
+export function lintCoverage(): readonly DiagnosticCoverage[] {
+    return [...coverage];
 }
 
-export function testSyntaxRestriction(
+export function lintRule(
+    ruleId: string,
+    code: string,
+): Promise<readonly ActualDiagnostic[]> {
+    return lintSource(ruleId, code, "rule");
+}
+
+export function lintSyntaxRestriction(
     selector: string,
-    cases: readonly TestCase[],
-): void {
-    requireRuleCases("no-restricted-syntax", cases);
-    runLintCases(
-        `no-restricted-syntax: ${selector}`,
-        cases,
-        createSingleRuleLinter("no-restricted-syntax", false, selector),
-    );
+    code: string,
+): Promise<readonly ActualDiagnostic[]> {
+    return lintSource("no-restricted-syntax", code, "syntax", selector);
 }
 
-// Unused-disable reporting is a linter option, not a rule. Keep the assertion rule
-// active so these cases distinguish directives that suppress an error from unused ones.
-export function testUnusedDisableDirectives(cases: readonly TestCase[]): void {
-    runLintCases(
-        "reportUnusedDisableDirectives",
-        cases,
-        createSingleRuleLinter(
-            "@typescript-eslint/consistent-type-assertions",
-            true,
-        ),
-    );
+// The TypeScript parser rejects these constructs before ESLint can run a rule.
+export function lintParserRestriction(
+    ruleId: string,
+    code: string,
+): Promise<readonly ActualDiagnostic[]> {
+    return lintSource(ruleId, code, "parser");
 }
 
-function runLintCases(
-    suite: string,
-    cases: readonly TestCase[],
-    engine: Promise<ESLint>,
-): void {
-    runCases(suite, cases, async (code) => {
-        const result = await lintSource(engine, code);
-        return result.messages.map(
-            (message: ReadonlyDeep<Linter.LintMessage>) =>
-                toActualDiagnostic(code, message),
-        );
-    });
+// Keep the assertion rule active to distinguish useful directives from unused ones.
+export function lintUnusedDisableDirectives(
+    code: string,
+): Promise<readonly ActualDiagnostic[]> {
+    return lintSource(
+        "@typescript-eslint/consistent-type-assertions",
+        code,
+        undefined,
+        undefined,
+        true,
+    );
 }
 
 async function lintSource(
-    engine: Promise<ESLint>,
+    ruleId: string,
     code: string,
-): Promise<ESLint.LintResult> {
+    kind?: DiagnosticCoverage["kind"],
+    selector?: string,
+    checkUnusedDisables = false,
+): Promise<readonly ActualDiagnostic[]> {
+    const key = JSON.stringify([ruleId, selector, checkUnusedDisables]);
+    const engine =
+        engines.get(key) ??
+        createSingleRuleLinter(ruleId, checkUnusedDisables, selector);
+    engines.set(key, engine);
     const [result] = await (
         await engine
     ).lintText(code, { filePath: SNIPPET_PATH });
     if (result === undefined)
         throw new Error(`ESLint returned no result for ${SNIPPET_PATH}`);
-    return result;
-}
-
-// Preset examples check the rule identity without fixing message text or locations.
-export function testLintExamples(
-    ruleId: string,
-    rejected: string,
-    accepted: string,
-): void {
-    testLintPair(ruleId, rejected, accepted, (messages) => {
-        assert.ok(
-            messages.length > 0,
-            `${ruleId} did not reject its violation`,
+    const diagnostics = result.messages.map(
+        (message: ReadonlyDeep<Linter.LintMessage>) =>
+            toActualDiagnostic(code, message),
+    );
+    if (kind !== undefined) {
+        const observed = diagnosticCoverage(
+            kind,
+            selector ?? ruleId,
+            diagnostics,
         );
-        assert.ok(
-            messages.every((message) => message.ruleId === ruleId),
-            JSON.stringify(messages),
-        );
-    });
-}
-
-// A parser rejection protects this syntax but is not evidence that the ESLint rule ran.
-export function testParserRejection(
-    ruleId: string,
-    rejected: string,
-    accepted: string,
-): void {
-    testLintPair(ruleId, rejected, accepted, (messages) => {
-        assert.ok(
-            messages.some(
-                (message) => message.fatal === true && message.ruleId === null,
-            ),
-            JSON.stringify(messages),
-        );
-    });
-}
-
-function testLintPair(
-    ruleId: string,
-    rejected: string,
-    accepted: string,
-    assertRejected: (
-        messages: readonly ReadonlyDeep<Linter.LintMessage>[],
-    ) => void,
-): void {
-    const engine = createSingleRuleLinter(ruleId);
-    void test(`${ruleId} rejects its violation`, async () => {
-        assertRejected((await lintSource(engine, rejected)).messages);
-    });
-    void test(`${ruleId} accepts its control`, async () => {
-        assert.deepEqual((await lintSource(engine, accepted)).messages, []);
-    });
+        if (observed !== undefined) coverage.push(observed);
+    }
+    return diagnostics;
 }

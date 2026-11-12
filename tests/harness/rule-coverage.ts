@@ -1,12 +1,5 @@
 import assert from "node:assert/strict";
-import ts from "typescript";
-import type { TestCase } from "./test-case.ts";
-
-export interface RuleTestRegistrations {
-    readonly rules: readonly string[];
-    readonly syntaxSelectors: readonly string[];
-    readonly parserRestrictions: readonly string[];
-}
+import type { ActualDiagnostic } from "./diagnostics.ts";
 
 export interface SyntaxRestriction {
     readonly selector: string;
@@ -53,109 +46,51 @@ export function syntaxRestrictionSettings(
     return { severity, restrictions };
 }
 
-export function requireRuleCases(
-    ruleId: string,
-    cases: readonly TestCase[],
-): void {
-    assert.ok(
-        cases.some(({ expect }) => expect.some(({ id }) => id === ruleId)),
-        `${ruleId} needs a rejection case expecting that rule's diagnostic`,
-    );
-    assert.ok(
-        cases.some(({ expect }) => expect.length === 0),
-        `${ruleId} needs an acceptance case expecting no diagnostics`,
-    );
+export interface DiagnosticCoverage {
+    readonly kind: "rule" | "syntax" | "parser";
+    readonly id: string;
+    readonly outcome: "rejection" | "acceptance";
 }
 
-// Only count direct calls to imported harness functions at module scope.
-// Strings, skipped callbacks, and unused functions do not register behavior tests.
-export function registeredRuleTests(text: string): RuleTestRegistrations {
-    const source = ts.createSourceFile(
-        "test.ts",
-        text,
-        ts.ScriptTarget.Latest,
-        true,
-    );
-    const imports: Map<string, string> = new Map<string, string>();
-    const constants: Map<string, string> = new Map<string, string>();
-    const rules: Set<string> = new Set<string>();
-    const syntaxSelectors: Set<string> = new Set<string>();
-    const parserRestrictions: Set<string> = new Set<string>();
-    const stringValue = (node: ts.Node | undefined): string | undefined => {
-        if (node === undefined) return undefined;
-        if (ts.isStringLiteralLike(node)) return node.text;
-        if (ts.isIdentifier(node)) return constants.get(node.text);
-        return undefined;
-    };
-    for (const statement of source.statements) {
-        if (
-            ts.isImportDeclaration(statement) &&
-            ts.isStringLiteral(statement.moduleSpecifier) &&
-            statement.moduleSpecifier.text.endsWith("/harness/lint-adapter.ts")
-        ) {
-            const bindings = statement.importClause?.namedBindings;
-            if (bindings !== undefined && ts.isNamedImports(bindings)) {
-                for (const binding of bindings.elements) {
-                    imports.set(
-                        binding.name.text,
-                        binding.propertyName?.text ?? binding.name.text,
-                    );
-                }
-            }
-        }
-        if (
-            ts.isVariableStatement(statement) &&
-            statement.declarationList.flags === ts.NodeFlags.Const
-        ) {
-            for (const declaration of statement.declarationList.declarations) {
-                if (ts.isIdentifier(declaration.name)) {
-                    const value = stringValue(declaration.initializer);
-                    if (value !== undefined)
-                        constants.set(declaration.name.text, value);
-                }
-            }
-        }
-        if (
-            !ts.isExpressionStatement(statement) ||
-            !ts.isCallExpression(statement.expression)
-        )
-            continue;
-        const call = statement.expression;
-        if (!ts.isIdentifier(call.expression)) continue;
-        const helper = imports.get(call.expression.text);
-        const registrationId = stringValue(call.arguments[0]);
-        if (registrationId === undefined) continue;
-        if (helper === "testLintRule" || helper === "testSyntaxRestriction") {
-            const cases = call.arguments[1];
-            if (
-                cases !== undefined &&
-                ts.isArrayLiteralExpression(cases) &&
-                cases.elements.length > 0
-            ) {
-                if (helper === "testSyntaxRestriction") {
-                    syntaxSelectors.add(registrationId);
-                    rules.add("no-restricted-syntax");
-                } else rules.add(registrationId);
-            }
-        }
-        if (helper === "testLintExamples" || helper === "testParserRejection") {
-            const rejected = call.arguments[1];
-            const accepted = call.arguments[2];
-            if (rejected === undefined || accepted === undefined) continue;
-            if (helper === "testLintExamples") rules.add(registrationId);
-            else parserRestrictions.add(registrationId);
-        }
-    }
-    return {
-        rules: [...rules],
-        parserRestrictions: [...parserRestrictions],
-        syntaxSelectors: [...syntaxSelectors],
-    };
+// Count actual tool results. Parser failures and unrelated rules cannot establish
+// rejection coverage for an ESLint rule or a syntax selector.
+export function diagnosticCoverage(
+    kind: DiagnosticCoverage["kind"],
+    id: string,
+    diagnostics: readonly ActualDiagnostic[],
+): DiagnosticCoverage | undefined {
+    if (diagnostics.length === 0) return { kind, id, outcome: "acceptance" };
+    const ruleId = kind === "syntax" ? "no-restricted-syntax" : id;
+    const rejected =
+        kind === "parser"
+            ? diagnostics.some(
+                  (diagnostic) =>
+                      diagnostic.fatal === true &&
+                      diagnostic.id === "(no rule)",
+              )
+            : diagnostics.every(
+                  (diagnostic) =>
+                      diagnostic.fatal !== true && diagnostic.id === ruleId,
+              );
+    return rejected ? { kind, id, outcome: "rejection" } : undefined;
 }
 
-export function missingRuleTests(
-    enabled: readonly string[],
-    registered: readonly string[],
+export function missingDiagnosticCoverage(
+    required: readonly string[],
+    kind: DiagnosticCoverage["kind"],
+    observed: readonly DiagnosticCoverage[],
 ): readonly string[] {
-    return enabled.filter((rule) => !registered.includes(rule)).toSorted();
+    return required
+        .filter(
+            (id) =>
+                !["rejection", "acceptance"].every((outcome) =>
+                    observed.some(
+                        (entry) =>
+                            entry.kind === kind &&
+                            entry.id === id &&
+                            entry.outcome === outcome,
+                    ),
+                ),
+        )
+        .toSorted();
 }

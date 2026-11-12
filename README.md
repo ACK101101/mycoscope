@@ -20,6 +20,12 @@ Test files register ordinary `test(...)` callbacks and keep inputs beside their
 assertions. Adapters execute tools and normalize results; they do not register
 tests. Keep repetitive setup in `tests/harness/`.
 
+The full `npm test` run checks that each enabled ESLint rule and syntax selector
+has produced both a rejection and an acceptance result. Parser restrictions are
+tracked separately. The coverage check uses the shared test process; focused
+runs with `--test-name-pattern`, `--test-skip-pattern`, or `--test-only` omit this
+suite-wide check.
+
 ## Readonly inputs
 
 Function parameters use readonly types by default. ESLint's
