@@ -186,19 +186,26 @@ after(async () => {
         )
     )
         return;
-    const severities = await readEffectDiagnosticSeverities();
-    const enabled = Object.entries(severities)
-        .filter(([, severity]) => severity !== "off")
-        .map(([name]) => name)
-        .toSorted();
-    assert.deepEqual(
-        [...rejectedDiagnostics].toSorted(),
-        enabled,
-        "Every enabled Effect diagnostic needs a passing rejection test",
-    );
-    assert.deepEqual(
-        [...acceptedDiagnostics].toSorted(),
-        enabled,
-        "Every enabled Effect diagnostic needs a passing acceptance test",
-    );
+    try {
+        const severities = await readEffectDiagnosticSeverities();
+        const enabled = Object.entries(severities)
+            .filter(([, severity]) => severity !== "off")
+            .map(([name]) => name)
+            .toSorted();
+        assert.deepEqual(
+            [...rejectedDiagnostics].toSorted(),
+            enabled,
+            "Every enabled Effect diagnostic needs a passing rejection test",
+        );
+        assert.deepEqual(
+            [...acceptedDiagnostics].toSorted(),
+            enabled,
+            "Every enabled Effect diagnostic needs a passing acceptance test",
+        );
+    } catch (error) {
+        // Node workaround: --test-isolation=none can report a failed root hook
+        // with exit code 0. Set a failing exit code before rethrowing.
+        process.exitCode = 1;
+        throw error;
+    }
 });
