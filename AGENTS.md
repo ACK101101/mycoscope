@@ -32,11 +32,11 @@ const SNIPPET_PATH = "tests/snippets/case.ts";
 
 ## Names
 
-- Name the domain concept and its role: `ExpectedDiagnostic`, `ActualDiagnostic`, and `TestCase`, rather than `Expected`, `Found`, and `Case`.
+- Name the domain concept and its role: `ExpectedDiagnostic` and `ActualDiagnostic`, rather than `Expected` and `Found`.
 - Name the full contents of a value. `DiagnosticIdentity` includes the ID, location, and source text; calling it `Position` would hide part of its meaning.
 - Use verbs for actions and nouns for values or pure projections. Examples: `assertDiagnosticsMatch` and `diagnosticIdentity`.
 - Make conversions explicit about their result or direction: `toActualDiagnostic`, `offsetFromLocation`, and `locationFromOffset`.
-- Name test registration functions for that action: `testLintRule` and `testCompilerOption`.
+- Name tool adapters for execution: `lintRule`, `lintSyntaxRestriction`, and `compileWithOption`. Test files register ordinary `test(...)` callbacks and assert their results.
 - Include units or representation when useful: `SNIPPET_PATH` is a path, not source code.
 - Use the same name for the same concept across adapters. Preserve external API names and established tool names.
 - Prefer clearer names before adding explanatory comments. Do not introduce abstractions solely to shorten names.

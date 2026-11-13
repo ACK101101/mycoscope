@@ -1,23 +1,28 @@
-import { testLintRule } from "../../harness/lint-adapter.ts";
+import { test } from "node:test";
+import { lintRule } from "../../harness/lint-adapter.ts";
+import { assertDiagnosticsMatch } from "../../harness/diagnostics.ts";
 
-testLintRule("@typescript-eslint/no-explicit-any", [
-    {
-        name: "an explicit any annotation is reported",
-        code: "export function f(x: any): unknown {\n    return x;\n}\n",
-        expect: [
-            {
-                id: "@typescript-eslint/no-explicit-any",
-                severity: 2,
-                line: 1,
-                column: 22,
-                text: "any",
-                message: "Unexpected any. Specify a different type.",
-            },
-        ],
-    },
-    {
-        name: "a typed function is allowed",
-        code: "export function f(x: number): number {\n    return x + 1;\n}\n",
-        expect: [],
-    },
-]);
+void test("an explicit any annotation is reported", async () => {
+    const diagnostics = await lintRule(
+        "@typescript-eslint/no-explicit-any",
+        "export function f(x: any): unknown {\n    return x;\n}\n",
+    );
+    assertDiagnosticsMatch(diagnostics, [
+        {
+            id: "@typescript-eslint/no-explicit-any",
+            severity: 2,
+            line: 1,
+            column: 22,
+            text: "any",
+            message: "Unexpected any. Specify a different type.",
+        },
+    ]);
+});
+
+void test("a typed function is allowed", async () => {
+    const diagnostics = await lintRule(
+        "@typescript-eslint/no-explicit-any",
+        "export function f(x: number): number {\n    return x + 1;\n}\n",
+    );
+    assertDiagnosticsMatch(diagnostics, []);
+});

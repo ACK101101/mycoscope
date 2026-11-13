@@ -1,179 +1,184 @@
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { ESLint } from "eslint";
+import { lintCoverage } from "../harness/lint-adapter.ts";
 import {
-    missingRuleTests,
-    registeredRuleTests,
-    requireRuleCases,
+    diagnosticCoverage,
+    missingDiagnosticCoverage,
     syntaxRestrictionSettings,
+    type DiagnosticCoverage,
 } from "../harness/rule-coverage.ts";
-import type { TestCase } from "../harness/test-case.ts";
+import type { ActualDiagnostic } from "../harness/diagnostics.ts";
 
-// The corresponding ESLint rules are disabled because TypeScript's parser rejects
-// these constructs. Parser tests must not satisfy enabled-rule coverage.
+// TypeScript's parser rejects these constructs before their disabled ESLint rules run.
 const PARSER_RESTRICTIONS = ["no-octal", "no-nonoctal-decimal-escape"];
 
-void test("every enabled ESLint rule has rejection and acceptance coverage", async () => {
-    const directory = "tests/eslint/individual-rules";
-    const files = (await readdir(directory)).filter((file) =>
-        file.endsWith(".test.ts"),
-    );
-    const registrations = await Promise.all(
-        files.map(async (file) =>
-            registeredRuleTests(await readFile(`${directory}/${file}`, "utf8")),
-        ),
-    );
-    const syntaxSelectors = registrations.flatMap(
-        (registration) => registration.syntaxSelectors,
-    );
-    const rulesWithTests = registrations.flatMap(({ rules }) => rules);
-    const parserTests = registrations.flatMap(
-        ({ parserRestrictions }) => parserRestrictions,
-    );
-    const engine = new ESLint();
-    const config: unknown = await engine.calculateConfigForFile("src/index.ts");
-    assert.ok(
-        typeof config === "object" && config !== null && "rules" in config,
-    );
-    assert.ok(typeof config.rules === "object" && config.rules !== null);
-    const enabled = Object.entries(config.rules).flatMap(
-        ([rule, setting]: readonly [string, unknown]) => {
-            assert.ok(Array.isArray(setting));
-            const values: readonly unknown[] = setting;
-            return values[0] === 0 || values[0] === "off" ? [] : [rule];
-        },
-    );
-    assert.deepEqual(
-        [...new Set(syntaxSelectors)].sort(),
-        syntaxRestrictionSettings(config)
-            .restrictions.map(({ selector }) => selector)
-            .sort(),
-        "Configured syntax selectors must match selector-specific rejection/acceptance tests",
-    );
-    assert.deepEqual(
-        missingRuleTests(enabled, rulesWithTests),
-        [],
-        "Enabled rules without rejection/acceptance tests",
-    );
-    assert.deepEqual(
-        [...parserTests].sort(),
-        [...PARSER_RESTRICTIONS].sort(),
-        "Each parser restriction needs rejection and acceptance tests",
-    );
-    for (const rule of PARSER_RESTRICTIONS)
+// npm test loads all test files in one process. Check their results after the
+// behavior tests finish. Focused runs intentionally omit cases.
+after(async () => {
+    if (
+        process.execArgv.some((argument) =>
+            /^--test-(?:name-pattern|skip-pattern|only)(?:=|$)/.test(argument),
+        )
+    )
+        return;
+    try {
+        const engine = new ESLint();
+        const config: unknown =
+            await engine.calculateConfigForFile("src/index.ts");
         assert.ok(
-            !enabled.includes(rule),
-            `${rule} must remain disabled; parser rejection is not rule coverage`,
+            typeof config === "object" && config !== null && "rules" in config,
         );
+        assert.ok(typeof config.rules === "object" && config.rules !== null);
+        const enabled = Object.entries(config.rules).flatMap(
+            ([rule, setting]: readonly [string, unknown]) => {
+                assert.ok(Array.isArray(setting));
+                const values: readonly unknown[] = setting;
+                return values[0] === 0 || values[0] === "off" ? [] : [rule];
+            },
+        );
+        const observed = lintCoverage();
+        const selectors = syntaxRestrictionSettings(config).restrictions.map(
+            ({ selector }) => selector,
+        );
+        assert.deepEqual(
+            missingDiagnosticCoverage(selectors, "syntax", observed),
+            [],
+            "Configured syntax selectors need rejection and acceptance coverage",
+        );
+        // Every selector must pass independently; a generic rule test cannot substitute.
+        assert.deepEqual(
+            missingDiagnosticCoverage(
+                enabled.filter((rule) => rule !== "no-restricted-syntax"),
+                "rule",
+                observed,
+            ),
+            [],
+            "Enabled rules need rejection and acceptance coverage",
+        );
+        assert.deepEqual(
+            missingDiagnosticCoverage(PARSER_RESTRICTIONS, "parser", observed),
+            [],
+            "Parser restrictions need rejection and acceptance coverage",
+        );
+        for (const rule of PARSER_RESTRICTIONS)
+            assert.ok(
+                !enabled.includes(rule),
+                `${rule} must remain disabled; parser rejection is not rule coverage`,
+            );
+    } catch (error) {
+        // Node workaround: --test-isolation=none can report a failed root hook
+        // with exit code 0. Set a failing exit code before rethrowing.
+        process.exitCode = 1;
+        throw error;
+    }
 });
 
-const IMPORT =
-    'import { testLintRule, testLintExamples, testParserRejection } from "../../harness/lint-adapter.ts";';
+const REJECTION: ActualDiagnostic = {
+    id: "no-debugger",
+    line: 1,
+    column: 1,
+    text: "debugger;",
+    message: "Unexpected 'debugger' statement.",
+};
 
-void test("adding an enabled rule without tests fails coverage", () => {
-    assert.deepEqual(missingRuleTests(["tested", "newRule"], ["tested"]), [
-        "newRule",
+void test("coverage requires both rejection and acceptance results for every enabled rule", () => {
+    const observed: readonly DiagnosticCoverage[] = [
+        { kind: "rule", id: "no-debugger", outcome: "rejection" },
+        { kind: "rule", id: "no-debugger", outcome: "acceptance" },
+    ];
+    assert.deepEqual(
+        missingDiagnosticCoverage(
+            ["no-debugger", "new-rule"],
+            "rule",
+            observed,
+        ),
+        ["new-rule"],
+    );
+    assert.deepEqual(
+        missingDiagnosticCoverage(
+            ["no-debugger"],
+            "rule",
+            observed.slice(0, 1),
+        ),
+        ["no-debugger"],
+    );
+    assert.deepEqual(
+        missingDiagnosticCoverage(["no-debugger"], "rule", observed.slice(1)),
+        ["no-debugger"],
+    );
+    assert.deepEqual(missingDiagnosticCoverage(["no-debugger"], "rule", []), [
+        "no-debugger",
     ]);
 });
 
-void test("unrelated strings, empty registrations, and unexecuted callbacks do not count", () => {
-    for (const code of [
-        'const rule = "no-debugger";',
-        'testLintRule("no-debugger", []);',
-        'function unused() { testLintExamples("no-debugger", "debugger;", "f();"); }',
-        'test.skip("skipped", () => testLintExamples("no-debugger", "debugger;", "f();"));',
-    ])
-        assert.deepEqual(registeredRuleTests(IMPORT + code).rules, []);
-    assert.deepEqual(
-        registeredRuleTests(
-            'testLintExamples("no-debugger", "debugger;", "f();");',
-        ).rules,
-        [],
-    );
-});
-
-void test("literal and constant rule IDs register paired examples", () => {
-    assert.deepEqual(
-        registeredRuleTests(
-            IMPORT +
-                'const RULE = "no-debugger"; testLintExamples(RULE, "debugger;", "f();");',
-        ).rules,
-        ["no-debugger"],
-    );
-    assert.deepEqual(
-        registeredRuleTests(
-            IMPORT + 'testLintExamples("no-debugger", "debugger;");',
-        ).rules,
-        [],
-    );
-});
-
-void test("parser rejections do not count as ESLint rule behavior", () => {
-    assert.deepEqual(
-        registeredRuleTests(
-            IMPORT +
-                'testParserRejection("no-octal", "const n = 071;", "const n = 0o71;");',
-        ),
-        { rules: [], parserRestrictions: ["no-octal"], syntaxSelectors: [] },
-    );
-});
-
-void test("paired source expressions register without evaluating test source", () => {
-    assert.deepEqual(
-        registeredRuleTests(
-            IMPORT +
-                'const PREFIX = "export "; testLintExamples("no-debugger", PREFIX + "debugger;", `${PREFIX}const n = 1;`);',
-        ).rules,
-        ["no-debugger"],
-    );
-});
-
-const REJECTED: TestCase = {
-    name: "reject",
-    code: "debugger;",
-    expect: [{ id: "no-debugger", line: 1, column: 1, text: "debugger;" }],
-};
-const ACCEPTED: TestCase = { name: "accept", code: "f();", expect: [] };
-
-void test("individual rule registrations require both rejection and acceptance cases", () => {
-    assert.throws(() => {
-        requireRuleCases("no-debugger", [ACCEPTED]);
-    }, /needs a rejection case/);
-    assert.throws(() => {
-        requireRuleCases("no-debugger", [REJECTED]);
-    }, /needs an acceptance case/);
-    assert.throws(() => {
-        requireRuleCases("another-rule", [REJECTED, ACCEPTED]);
-    }, /needs a rejection case/);
-    assert.doesNotThrow(() => {
-        requireRuleCases("no-debugger", [REJECTED, ACCEPTED]);
+void test("rule coverage distinguishes acceptance, target rejection, and unrelated diagnostics", () => {
+    assert.deepEqual(diagnosticCoverage("rule", "no-debugger", []), {
+        kind: "rule",
+        id: "no-debugger",
+        outcome: "acceptance",
     });
+    assert.deepEqual(
+        diagnosticCoverage("rule", "no-debugger", [REJECTION, REJECTION]),
+        { kind: "rule", id: "no-debugger", outcome: "rejection" },
+    );
+    assert.equal(
+        diagnosticCoverage("rule", "another-rule", [REJECTION]),
+        undefined,
+    );
+    assert.equal(
+        diagnosticCoverage("rule", "no-debugger", [
+            REJECTION,
+            { ...REJECTION, id: "another-rule" },
+        ]),
+        undefined,
+    );
 });
 
-void test("syntax coverage counts only paired selector-specific registrations", () => {
-    const source =
-        'import { testSyntaxRestriction as restriction } from "../../harness/lint-adapter.ts";';
+void test("parser failures cannot satisfy ESLint rule or selector coverage", () => {
+    const diagnostics = [{ ...REJECTION, id: "(no rule)", fatal: true }];
+    assert.equal(
+        diagnosticCoverage("rule", "no-debugger", diagnostics),
+        undefined,
+    );
+    assert.equal(
+        diagnosticCoverage("syntax", "ImportExpression", diagnostics),
+        undefined,
+    );
+    assert.deepEqual(diagnosticCoverage("parser", "no-octal", diagnostics), {
+        kind: "parser",
+        id: "no-octal",
+        outcome: "rejection",
+    });
+    assert.equal(
+        diagnosticCoverage("parser", "no-octal", [REJECTION]),
+        undefined,
+    );
+});
+
+void test("a rule pair or another selector cannot satisfy a syntax selector's coverage", () => {
+    const observed: readonly DiagnosticCoverage[] = [
+        { kind: "rule", id: "no-restricted-syntax", outcome: "rejection" },
+        { kind: "rule", id: "no-restricted-syntax", outcome: "acceptance" },
+        { kind: "syntax", id: "ImportExpression", outcome: "rejection" },
+        { kind: "syntax", id: "ImportExpression", outcome: "acceptance" },
+    ];
     assert.deepEqual(
-        registeredRuleTests(
-            source + 'restriction("ImportExpression", [{ name: "case" }]);',
+        missingDiagnosticCoverage(
+            ["ImportExpression", "ExportAllDeclaration"],
+            "syntax",
+            observed,
         ),
-        {
-            rules: ["no-restricted-syntax"],
-            parserRestrictions: [],
-            syntaxSelectors: ["ImportExpression"],
-        },
+        ["ExportAllDeclaration"],
     );
     assert.deepEqual(
-        registeredRuleTests(source + 'restriction("ImportExpression", []);')
-            .syntaxSelectors,
-        [],
+        diagnosticCoverage("syntax", "ImportExpression", [
+            { ...REJECTION, id: "no-restricted-syntax" },
+        ]),
+        { kind: "syntax", id: "ImportExpression", outcome: "rejection" },
     );
-    assert.deepEqual(
-        registeredRuleTests(
-            IMPORT +
-                'testLintExamples("no-restricted-syntax", "import(x)", "f()");',
-        ).syntaxSelectors,
-        [],
+    assert.equal(
+        diagnosticCoverage("syntax", "ImportExpression", [REJECTION]),
+        undefined,
     );
 });

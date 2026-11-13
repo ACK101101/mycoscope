@@ -1,33 +1,41 @@
-import { testLintRule } from "../../harness/lint-adapter.ts";
+import { test } from "node:test";
+import { lintRule } from "../../harness/lint-adapter.ts";
+import { assertDiagnosticsMatch } from "../../harness/diagnostics.ts";
 
-testLintRule("no-implicit-coercion", [
-    {
-        name: "!! is reported",
-        code: "export const flag = (s: string): boolean => !!s;\n",
-        expect: [
-            {
-                id: "no-implicit-coercion",
-                line: 1,
-                column: 45,
-                text: "!!s",
-            },
-        ],
-    },
-    {
-        name: "unary + is reported",
-        code: "export const num = (s: string): number => +s;\n",
-        expect: [
-            {
-                id: "no-implicit-coercion",
-                line: 1,
-                column: 43,
-                text: "+s",
-            },
-        ],
-    },
-    {
-        name: "Boolean() and Number() are allowed",
-        code: "export const both = (s: string): [boolean, number] => [Boolean(s), Number(s)];\n",
-        expect: [],
-    },
-]);
+void test("!! is reported", async () => {
+    const diagnostics = await lintRule(
+        "no-implicit-coercion",
+        "export const flag = (s: string): boolean => !!s;\n",
+    );
+    assertDiagnosticsMatch(diagnostics, [
+        {
+            id: "no-implicit-coercion",
+            line: 1,
+            column: 45,
+            text: "!!s",
+        },
+    ]);
+});
+
+void test("unary + is reported", async () => {
+    const diagnostics = await lintRule(
+        "no-implicit-coercion",
+        "export const num = (s: string): number => +s;\n",
+    );
+    assertDiagnosticsMatch(diagnostics, [
+        {
+            id: "no-implicit-coercion",
+            line: 1,
+            column: 43,
+            text: "+s",
+        },
+    ]);
+});
+
+void test("Boolean() and Number() are allowed", async () => {
+    const diagnostics = await lintRule(
+        "no-implicit-coercion",
+        "export const both = (s: string): [boolean, number] => [Boolean(s), Number(s)];\n",
+    );
+    assertDiagnosticsMatch(diagnostics, []);
+});

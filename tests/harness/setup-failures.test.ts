@@ -15,8 +15,7 @@ const CHILD_ENV = Object.fromEntries(
     ),
 );
 
-// Run each setup failure in a child process so its test registrations and working
-// directory cannot affect the other harness tests.
+// Isolate prototype mocks and working-directory changes from the other tests.
 void test("a missing ESLint result fails instead of passing an acceptance case", () => {
     const result = spawnSync(
         process.execPath,
@@ -28,17 +27,9 @@ void test("a missing ESLint result fails instead of passing an acceptance case",
             `
                 import { mock } from "node:test";
                 import { ESLint } from "eslint";
-                import { testLintRule } from ${JSON.stringify(LINT_ADAPTER)};
+                import { lintRule } from ${JSON.stringify(LINT_ADAPTER)};
                 mock.method(ESLint.prototype, "lintText", async () => []);
-                testLintRule("eqeqeq", [{
-                    name: "valid source",
-                    code: "export const n = 1;",
-                    expect: [],
-                }, {
-                    name: "invalid source",
-                    code: "1 == 1;",
-                    expect: [{ id: "eqeqeq", line: 1, column: 3, text: "==" }],
-                }]);
+                await lintRule("eqeqeq", "export const n = 1;");
             `,
         ],
         { env: CHILD_ENV, encoding: "utf8", timeout: 20_000 },
@@ -80,8 +71,8 @@ for (const { name, config, phase } of CONFIG_FAILURES) {
                     "--input-type=module",
                     "--eval",
                     `
-                        import { testCompilerOption } from ${JSON.stringify(COMPILER_ADAPTER)};
-                        testCompilerOption("noImplicitAny", []);
+                        import { compileWithOption } from ${JSON.stringify(COMPILER_ADAPTER)};
+                        compileWithOption("noImplicitAny", "export {};");
                     `,
                 ],
                 {
@@ -112,16 +103,10 @@ void test("a different syntax restriction cannot satisfy a selector's rejection 
             "--input-type=module",
             "--eval",
             `
-                import { testSyntaxRestriction } from ${JSON.stringify(LINT_ADAPTER)};
-                testSyntaxRestriction("ImportExpression", [{
-                    name: "another restriction",
-                    code: "Reflect.ownKeys({});",
-                    expect: [{ id: "no-restricted-syntax", line: 1, column: 1, text: "Reflect.ownKeys" }],
-                }, {
-                    name: "control",
-                    code: "Object.keys({});",
-                    expect: [],
-                }]);
+                import assert from "node:assert/strict";
+                import { lintSyntaxRestriction } from ${JSON.stringify(LINT_ADAPTER)};
+                const diagnostics = await lintSyntaxRestriction("ImportExpression", "Reflect.ownKeys({});");
+                assert.deepEqual(diagnostics.map(({id}) => id), ["no-restricted-syntax"]);
             `,
         ],
         { env: CHILD_ENV, encoding: "utf8", timeout: 20_000 },
@@ -131,5 +116,51 @@ void test("a different syntax restriction cannot satisfy a selector's rejection 
     assert.match(
         result.stdout + result.stderr,
         /Expected values to be strictly deep-equal/,
+    );
+});
+
+void test("skipped tests and unused callbacks do not establish rule coverage", () => {
+    const result = spawnSync(
+        process.execPath,
+        [
+            "--import",
+            TSX_LOADER,
+            "--input-type=module",
+            "--test-reporter=tap",
+            "--eval",
+            `
+                import assert from "node:assert/strict";
+                import { after, test } from "node:test";
+                import { lintRule, lintCoverage } from ${JSON.stringify(LINT_ADAPTER)};
+                const unused = () => lintRule("eqeqeq", "1 == 1;");
+                test.skip("skipped rejection", unused);
+                test.skip("skipped acceptance", () => lintRule("eqeqeq", "1 === 1;"));
+                after(() => assert.deepEqual(lintCoverage(), []));
+            `,
+        ],
+        { env: CHILD_ENV, encoding: "utf8", timeout: 20_000 },
+    );
+    assert.ifError(result.error);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.match(result.stdout, /# skipped 2/);
+});
+
+void test("missing rule coverage exits unsuccessfully in the shared test process", () => {
+    const result = spawnSync(
+        process.execPath,
+        [
+            "--import",
+            TSX_LOADER,
+            "--test",
+            "--test-isolation=none",
+            "tests/eslint/rule-coverage.test.ts",
+        ],
+        { env: CHILD_ENV, encoding: "utf8", timeout: 20_000 },
+    );
+    assert.ifError(result.error);
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(
+        result.stdout + result.stderr,
+        /Configured syntax selectors need rejection and acceptance coverage/,
     );
 });
