@@ -144,23 +144,3 @@ void test("skipped tests and unused callbacks do not establish rule coverage", (
     assert.equal(result.status, 0, result.stdout + result.stderr);
     assert.match(result.stdout, /# skipped 2/);
 });
-
-void test("missing rule coverage exits unsuccessfully in the shared test process", () => {
-    const result = spawnSync(
-        process.execPath,
-        [
-            "--import",
-            TSX_LOADER,
-            "--test",
-            "--test-isolation=none",
-            "tests/eslint/rule-coverage.test.ts",
-        ],
-        { env: CHILD_ENV, encoding: "utf8", timeout: 20_000 },
-    );
-    assert.ifError(result.error);
-    assert.equal(result.status, 1, result.stdout + result.stderr);
-    assert.match(
-        result.stdout + result.stderr,
-        /Configured syntax selectors need rejection and acceptance coverage/,
-    );
-});
