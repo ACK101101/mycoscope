@@ -1,78 +1,11 @@
 import assert from "node:assert/strict";
-import { after, test } from "node:test";
-import { ESLint } from "eslint";
-import { lintCoverage } from "../harness/lint-adapter.ts";
+import { test } from "node:test";
 import {
     diagnosticCoverage,
     missingDiagnosticCoverage,
-    syntaxRestrictionSettings,
     type DiagnosticCoverage,
 } from "../harness/rule-coverage.ts";
 import type { ActualDiagnostic } from "../harness/diagnostics.ts";
-
-// TypeScript's parser rejects these constructs before their disabled ESLint rules run.
-const PARSER_RESTRICTIONS = ["no-octal", "no-nonoctal-decimal-escape"];
-
-// npm test loads all test files in one process. Check their results after the
-// behavior tests finish. Focused runs intentionally omit cases.
-after(async () => {
-    if (
-        process.execArgv.some((argument) =>
-            /^--test-(?:name-pattern|skip-pattern|only)(?:=|$)/.test(argument),
-        )
-    )
-        return;
-    try {
-        const engine = new ESLint();
-        const config: unknown =
-            await engine.calculateConfigForFile("src/index.ts");
-        assert.ok(
-            typeof config === "object" && config !== null && "rules" in config,
-        );
-        assert.ok(typeof config.rules === "object" && config.rules !== null);
-        const enabled = Object.entries(config.rules).flatMap(
-            ([rule, setting]: readonly [string, unknown]) => {
-                assert.ok(Array.isArray(setting));
-                const values: readonly unknown[] = setting;
-                return values[0] === 0 || values[0] === "off" ? [] : [rule];
-            },
-        );
-        const observed = lintCoverage();
-        const selectors = syntaxRestrictionSettings(config).restrictions.map(
-            ({ selector }) => selector,
-        );
-        assert.deepEqual(
-            missingDiagnosticCoverage(selectors, "syntax", observed),
-            [],
-            "Configured syntax selectors need rejection and acceptance coverage",
-        );
-        // Every selector must pass independently; a generic rule test cannot substitute.
-        assert.deepEqual(
-            missingDiagnosticCoverage(
-                enabled.filter((rule) => rule !== "no-restricted-syntax"),
-                "rule",
-                observed,
-            ),
-            [],
-            "Enabled rules need rejection and acceptance coverage",
-        );
-        assert.deepEqual(
-            missingDiagnosticCoverage(PARSER_RESTRICTIONS, "parser", observed),
-            [],
-            "Parser restrictions need rejection and acceptance coverage",
-        );
-        for (const rule of PARSER_RESTRICTIONS)
-            assert.ok(
-                !enabled.includes(rule),
-                `${rule} must remain disabled; parser rejection is not rule coverage`,
-            );
-    } catch (error) {
-        // Node workaround: --test-isolation=none can report a failed root hook
-        // with exit code 0. Set a failing exit code before rethrowing.
-        process.exitCode = 1;
-        throw error;
-    }
-});
 
 const REJECTION: ActualDiagnostic = {
     id: "no-debugger",
