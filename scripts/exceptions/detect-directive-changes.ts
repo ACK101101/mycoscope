@@ -89,10 +89,8 @@ function changedLinesByRevision(
     return files;
 }
 
-function sourceComments(
-    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- TypeScript traversal APIs consume compiler-owned SourceFile objects.
-    source: ts.SourceFile,
-): readonly ts.CommentRange[] {
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
+function sourceComments(source: ts.SourceFile): readonly ts.CommentRange[] {
     const comments = new Map<number, ts.CommentRange>();
     const scanner = ts.createScanner(
         ts.ScriptTarget.Latest,
@@ -130,7 +128,7 @@ function sourceComments(
 
 function commentException(
     file: string,
-    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- TypeScript traversal APIs consume compiler-owned SourceFile objects.
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- This traversal consumes TypeScript compiler objects with mutable fields.
     source: ts.SourceFile,
     comment: Readonly<ts.CommentRange>,
 ): ExceptionDirective | null {
@@ -140,11 +138,15 @@ function commentException(
         comment.end - (block ? 2 : 0),
     );
     const eslint = ESLINT_DIRECTIVE.exec(text);
+    const wiring = block
+        ? null
+        : /^\s*(@mycoscope-exception)(?=\s|$)(.*)$/.exec(text);
     // TypeScript reads ignore/expect-error from the last line of a block comment.
     const lastLine = text.split(/\r\n|[\r\n\u2028\u2029]/u).at(-1) ?? "";
     const lastLineStart = text.length - lastLine.length;
     const hit =
         eslint ??
+        wiring ??
         (block
             ? TS_BLOCK_DIRECTIVE.exec(lastLine)
             : TS_LINE_DIRECTIVE.exec(text));
@@ -160,7 +162,7 @@ function commentException(
     const rest = hit?.[2] ?? "";
     const separator = /\s-{2,}\s/u.exec(rest);
     let reason = rest;
-    if (eslint !== null) {
+    if (eslint !== null || wiring !== null) {
         reason =
             separator === null
                 ? ""
