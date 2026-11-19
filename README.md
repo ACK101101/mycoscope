@@ -20,11 +20,14 @@ Test files register ordinary `test(...)` callbacks and keep inputs beside their
 assertions. Adapters execute tools and normalize results; they do not register
 tests. Keep repetitive setup in `tests/harness/`.
 
-The full `npm test` run checks that each enabled ESLint rule and syntax selector
-has produced both a rejection and an acceptance result. Parser restrictions are
-tracked separately. The coverage check uses the shared test process; focused
-runs with `--test-name-pattern`, `--test-skip-pattern`, or `--test-only` omit this
-suite-wide check.
+The suite in `tests/eslint/individual-rules.test.ts` loads the rule test files and
+checks rejection and acceptance coverage last. Each enabled rule and syntax
+selector needs both outcomes; parser restrictions are tracked separately. The npm
+test glob omits `individual-rules/*.test.ts` because their owning suite loads them.
+Those files remain runnable individually with the command above.
+
+Focused runs with `--test-name-pattern`, `--test-skip-pattern`, or `--test-only`
+omit the suite-wide coverage check.
 
 ## Readonly inputs
 
