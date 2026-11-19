@@ -144,7 +144,15 @@ export default defineConfig(
             // TypeScript's parser rejects these constructs before ESLint rules can run.
             "no-octal": "off",
             "no-nonoctal-decimal-escape": "off",
-            "no-restricted-syntax": ["error", ...unresolvableSyntax],
+            "no-restricted-syntax": [
+                "error",
+                ...unresolvableSyntax,
+                {
+                    selector:
+                        "VariableDeclaration[kind='let']:not(:matches(FunctionDeclaration, FunctionExpression, ArrowFunctionExpression) VariableDeclaration)",
+                    message: "Use const outside functions.",
+                },
+            ],
             "no-eval": "error", // Reject code execution from strings.
             "no-new-func": "error", // Reject code execution from strings.
 
