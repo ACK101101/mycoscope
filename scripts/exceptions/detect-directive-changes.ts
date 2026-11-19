@@ -149,7 +149,7 @@ function commentException(
     // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- TypeScript traversal APIs consume compiler-owned SourceFile objects.
     source: ts.SourceFile,
     comment: Readonly<ts.CommentRange>,
-): ExceptionDirective | null {
+): ExceptionDirective | undefined {
     const block = comment.kind === ts.SyntaxKind.MultiLineCommentTrivia;
     const text = source.text.slice(
         comment.pos + 2,
@@ -165,14 +165,14 @@ function commentException(
             ? TS_BLOCK_DIRECTIVE.exec(lastLine)
             : TS_LINE_DIRECTIVE.exec(text));
     const directive = hit?.[1];
-    if (directive === undefined) return null;
+    if (directive === undefined) return undefined;
     if (
         eslint !== null &&
         !block &&
         directive !== "eslint-disable-line" &&
         directive !== "eslint-disable-next-line"
     )
-        return null;
+        return undefined;
     const rest = hit?.[2] ?? "";
     const separator = /\s-{2,}\s/u.exec(rest);
     let reason = rest;
@@ -220,7 +220,7 @@ export function findExceptionChanges(
                 );
                 if (changedLine === undefined) continue;
                 const exception = commentException(source, comment);
-                if (exception === null) continue;
+                if (exception === undefined) continue;
                 const line = lines.has(exception.line)
                     ? exception.line
                     : changedLine;

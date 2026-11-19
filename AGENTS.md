@@ -7,6 +7,12 @@
 - Keep tests fast, deterministic, and independent. Exercise real integrations where substitution could hide a meaningful failure.
 - Add infrastructure and abstraction to solve a demonstrated problem. Remove obsolete implementation and its supporting machinery together.
 
+# Absence values
+
+- Prefer `undefined` for absence in project-owned APIs.
+- Preserve `null` where JavaScript or an upstream API contract uses it. Do not add wrappers solely to convert it.
+- In project-owned contracts, use `null` and `undefined` together only when they represent distinct, documented states.
+
 # Comments and names
 
 Apply these conventions to code and configuration in this repository.
