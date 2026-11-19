@@ -31,23 +31,11 @@ jobs:
         with:
           script: |
             const { readFileSync } = require("node:fs");
-            const body = readFileSync("comment.md", "utf8");
-            const marker = "<!-- mycoscope:exceptions -->";
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              ...context.repo,
-              issue_number: context.issue.number,
-              per_page: 100,
-            });
-            const report = comments.find(comment =>
-              comment.user?.login === "github-actions[bot]" &&
-              comment.body?.startsWith(marker)
+            // github-script@v7 runs on Node 20, which cannot load TypeScript directly.
+            const { tsImport } = require("tsx/esm/api");
+            const { publishExceptionReport } = await tsImport(
+              "./scripts/exceptions/publish-pr-comment.ts", `${process.cwd()}/`
             );
-            if (report) {
-              await github.rest.issues.updateComment({
-                ...context.repo, comment_id: report.id, body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                ...context.repo, issue_number: context.issue.number, body,
-              });
-            }
+            await publishExceptionReport(
+              github, context.repo, context.issue.number, readFileSync("comment.md", "utf8")
+            );

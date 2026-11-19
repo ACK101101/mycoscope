@@ -1,75 +1,77 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { runInNewContext } from "node:vm";
+import { publishExceptionReport } from "../../scripts/exceptions/publish-pr-comment.ts";
 import { MARKER } from "../../scripts/exceptions/render-pr-comment.ts";
 
 interface Comment {
     readonly id: number;
-    readonly user: { readonly login: string };
-    body: string;
+    readonly user?: { readonly login: string } | null;
+    body?: string;
 }
 
 const BOT = "github-actions[bot]";
 
 // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- The fake GitHub API updates the caller's comment store.
 async function publish(comments: Comment[], body: string): Promise<void> {
-    const workflow = readFileSync(".github/workflows/exceptions.yml", "utf8");
-    const script = workflow.split("          script: |\n")[1];
-    assert.ok(
-        script !== undefined,
-        "Exception publishing needs an executable workflow script",
-    );
-    // Execute the workflow's script with an in-memory comment store in place of GitHub.
-    const result: unknown = runInNewContext(
-        `(async () => {\n${script.replace(/^ {12}/gm, "")}\n})()`,
+    await publishExceptionReport(
         {
-            require: (name: string) => {
-                assert.equal(name, "node:fs");
-                return { readFileSync: () => body };
+            paginate: (route, options) => {
+                assert.equal(
+                    route,
+                    "GET /repos/{owner}/{repo}/issues/{issue_number}/comments",
+                );
+                assert.deepEqual(options, {
+                    owner: "test",
+                    repo: "repo",
+                    issue_number: 2,
+                    per_page: 100,
+                });
+                return Promise.resolve(comments);
             },
-            context: {
-                repo: { owner: "test", repo: "repo" },
-                issue: { number: 2 },
-            },
-            github: {
-                paginate: () => Promise.resolve(comments),
-                rest: {
-                    issues: {
-                        listComments: () => Promise.resolve({ data: comments }),
-                        updateComment: ({
-                            comment_id,
-                            body: updatedBody,
-                        }: {
-                            readonly comment_id: number;
-                            readonly body: string;
-                        }) => {
-                            const comment = comments.find(
-                                ({ id }) => id === comment_id,
-                            );
-                            assert.ok(comment !== undefined);
-                            comment.body = updatedBody;
-                            return Promise.resolve({ data: comment });
-                        },
-                        createComment: ({
+            rest: {
+                issues: {
+                    updateComment: ({
+                        owner,
+                        repo,
+                        comment_id,
+                        body: updatedBody,
+                    }) => {
+                        assert.deepEqual(
+                            { owner, repo },
+                            { owner: "test", repo: "repo" },
+                        );
+                        const comment = comments.find(
+                            ({ id }) => id === comment_id,
+                        );
+                        assert.ok(comment !== undefined);
+                        comment.body = updatedBody;
+                        return Promise.resolve({ data: comment });
+                    },
+                    createComment: ({
+                        owner,
+                        repo,
+                        issue_number,
+                        body: newBody,
+                    }) => {
+                        assert.deepEqual(
+                            { owner, repo, issue_number },
+                            { owner: "test", repo: "repo", issue_number: 2 },
+                        );
+                        const comment = {
+                            id: comments.length + 1,
+                            user: { login: BOT },
                             body: newBody,
-                        }: {
-                            readonly body: string;
-                        }) => {
-                            const comment = {
-                                id: comments.length + 1,
-                                user: { login: BOT },
-                                body: newBody,
-                            };
-                            comments.push(comment);
-                            return Promise.resolve({ data: comment });
-                        },
+                        };
+                        comments.push(comment);
+                        return Promise.resolve({ data: comment });
                     },
                 },
             },
         },
+        { owner: "test", repo: "repo" },
+        2,
+        body,
     );
-    await result;
 }
 
 void test("updates the marked exception report without overwriting other bot comments", async () => {
@@ -111,4 +113,46 @@ void test("creates one report when only unrelated comments or other authors' mar
         },
         { id: 3, user: { login: BOT }, body: `${MARKER}\nUpdated report` },
     ]);
+});
+
+void test("comments with a deleted author or missing body do not replace the report", async () => {
+    const comments: Comment[] = [
+        { id: 1, user: null, body: `${MARKER}\nDeleted author` },
+        { id: 2, user: { login: BOT } },
+    ];
+    await publish(comments, `${MARKER}\nNew report`);
+    assert.deepEqual(comments, [
+        { id: 1, user: null, body: `${MARKER}\nDeleted author` },
+        { id: 2, user: { login: BOT } },
+        { id: 3, user: { login: BOT }, body: `${MARKER}\nNew report` },
+    ]);
+});
+
+void test("a comment lookup failure stops publishing", async () => {
+    const failure = new Error("GitHub comment lookup failed");
+    await assert.rejects(
+        publishExceptionReport(
+            {
+                paginate: () => Promise.reject(failure),
+                rest: {
+                    issues: {
+                        updateComment: () => {
+                            assert.fail(
+                                "A failed lookup must not update comments",
+                            );
+                        },
+                        createComment: () => {
+                            assert.fail(
+                                "A failed lookup must not create comments",
+                            );
+                        },
+                    },
+                },
+            },
+            { owner: "test", repo: "repo" },
+            2,
+            `${MARKER}\nReport`,
+        ),
+        failure,
+    );
 });
