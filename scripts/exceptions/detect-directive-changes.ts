@@ -10,11 +10,9 @@ interface ExceptionDirective {
 
 export type SourceRevision = "base" | "head";
 
-export type ExceptionChange = ExceptionDirective &
-    (
-        | { readonly revision: "head" }
-        | { readonly revision: "base"; readonly directive: "eslint-enable" }
-    );
+export type ExceptionChange = ExceptionDirective & {
+    readonly revision: SourceRevision;
+};
 
 const ESLINT_DIRECTIVE =
     /^\s*(eslint-disable(?:-next-line|-line)?|eslint-enable|eslint)(?=\s|$)([\s\S]*)$/;
@@ -24,6 +22,10 @@ const TS_BLOCK_DIRECTIVE =
     /^\s*(?:\/|\*)*\s*(@ts-expect-error|@ts-ignore)(.*)$/;
 const HUNK = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
 const SCANNED = /\.(?:tsx?|mts|cts)$/;
+// Upstream scans raw text, including literals. Keep this grammar aligned with the
+// installed CLI; effect-overrides.integration.test.ts checks the shared assumptions.
+const EFFECT_DIRECTIVE =
+    /@effect-diagnostics(?:-next-line)?(?:\s(?:[a-zA-Z0-9/]+|\*):(?:off|warning|error|message|suggestion|skip-file))+/g;
 
 function diffFilePath(header: string): string {
     const path = header.slice(4).split("\t")[0] ?? "";
@@ -215,6 +217,38 @@ export function findExceptionChanges(
                         directive: "eslint-enable",
                     });
                 }
+            }
+            // Include both revisions: deleting a restoring override can extend a suppression.
+            for (const override of source.text.matchAll(EFFECT_DIRECTIVE)) {
+                const firstLine =
+                    source.getLineAndCharacterOfPosition(override.index).line +
+                    1;
+                const lastLine =
+                    source.getLineAndCharacterOfPosition(
+                        override.index + override[0].length - 1,
+                    ).line + 1;
+                if (
+                    ![...lines].some(
+                        (line) => line >= firstLine && line <= lastLine,
+                    )
+                )
+                    continue;
+                found.push({
+                    revision,
+                    file,
+                    line: firstLine,
+                    directive: override[0].replace(/\s+/gu, " "),
+                    reason: (
+                        source.text
+                            .slice(override.index + override[0].length)
+                            .split("\n")[0] ?? ""
+                    )
+                        .split(" -- ")
+                        .slice(1)
+                        .join(" -- ")
+                        .replace(/\*\/\s*$/, "")
+                        .trim(),
+                });
             }
         }
     }

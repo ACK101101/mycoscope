@@ -10,7 +10,7 @@ export function renderComment(found: readonly ExceptionChange[]): string {
         const reason = e.reason === "" ? "**no reason given**" : e.reason;
         const change =
             e.revision === "base"
-                ? "Removed or edited suppression boundary"
+                ? "Removed or edited directive"
                 : "Added or edited directive";
         return `- **${change} (${e.revision})** \`${e.file}:${String(e.line)}\` \`${e.directive}\` — ${reason}`;
     });

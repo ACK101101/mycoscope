@@ -42,18 +42,23 @@ void test("the report reads both Git snapshots from the merge base, independent 
         ).trim();
     try {
         git("init", "--initial-branch=main");
+        const marker = "@effect-" + "diagnostics";
+        const effectBoundary = `// ${marker} floatingEffect:error -- end Effect workaround`;
         const base =
-            "/* eslint-disable no-debugger -- vendor workaround */\ndebugger;\n/* eslint-enable no-debugger -- end workaround */\ndebugger;\n";
+            "/* eslint-disable no-debugger -- vendor workaround */\ndebugger;\n/* eslint-enable no-debugger -- end workaround */\ndebugger;\n" +
+            `// ${marker} floatingEffect:off\n${effectBoundary}\nf();\n`;
         writeFileSync(join(directory, "sample.ts"), base);
         git("add", "sample.ts");
         git("commit", "-m", "base");
         git("checkout", "-b", "feature");
         writeFileSync(
             join(directory, "sample.ts"),
-            base.replace(
-                "/* eslint-enable no-debugger -- end workaround */",
-                "// eslint-disable-next-line no-debugger -- second workaround",
-            ),
+            base
+                .replace(
+                    "/* eslint-enable no-debugger -- end workaround */",
+                    "// eslint-disable-next-line no-debugger -- second workaround",
+                )
+                .replace(effectBoundary, ""),
         );
         git("commit", "-am", "change suppression boundary");
         git("checkout", "main");
@@ -83,7 +88,11 @@ void test("the report reads both Git snapshots from the merge base, independent 
         );
         assert.match(
             result.stdout,
-            /Removed or edited suppression boundary \(base\).*sample\.ts:3.*end workaround/,
+            /Removed or edited directive \(base\).*sample\.ts:3.*end workaround/,
+        );
+        assert.match(
+            result.stdout,
+            /Removed or edited directive \(base\).*sample\.ts:6.*floatingEffect:error.*end Effect workaround/,
         );
     } finally {
         rmSync(directory, { recursive: true, force: true });

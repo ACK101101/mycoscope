@@ -21,7 +21,7 @@ void test("comment labels revisions, identifies locations and flags missing reas
     ]);
     assert.match(body, /mycoscope:exceptions/);
     assert.match(body, /no reason given/);
-    assert.match(body, /Removed or edited suppression boundary/);
+    assert.match(body, /Removed or edited directive/);
     assert.match(body, /base/);
     assert.match(body, /src\/a.ts:3/);
 });
