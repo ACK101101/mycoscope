@@ -1,20 +1,10 @@
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
-
-const REPORT = fileURLToPath(
-    import.meta.resolve("../../scripts/exceptions/report-cli.ts"),
-);
-const LOADER = import.meta.resolve("tsx");
-const CHILD_ENV = Object.fromEntries(
-    Object.entries(process.env).filter(
-        ([name]) => name !== "NODE_TEST_CONTEXT",
-    ),
-);
+import { readExceptionReport } from "../../scripts/exceptions/read-pr-exceptions.ts";
 
 void test("the report reads both Git snapshots from the merge base, independent of working-tree edits", () => {
     const directory = mkdtempSync(
@@ -42,18 +32,23 @@ void test("the report reads both Git snapshots from the merge base, independent 
         ).trim();
     try {
         git("init", "--initial-branch=main");
+        const marker = "@effect-" + "diagnostics";
+        const effectBoundary = `// ${marker} floatingEffect:error -- end Effect workaround`;
         const base =
-            "/* eslint-disable no-debugger -- vendor workaround */\ndebugger;\n/* eslint-enable no-debugger -- end workaround */\ndebugger;\n";
+            "/* eslint-disable no-debugger -- vendor workaround */\ndebugger;\n/* eslint-enable no-debugger -- end workaround */\ndebugger;\n" +
+            `// ${marker} floatingEffect:off\n${effectBoundary}\nf();\n`;
         writeFileSync(join(directory, "sample.ts"), base);
         git("add", "sample.ts");
         git("commit", "-m", "base");
         git("checkout", "-b", "feature");
         writeFileSync(
             join(directory, "sample.ts"),
-            base.replace(
-                "/* eslint-enable no-debugger -- end workaround */",
-                "// eslint-disable-next-line no-debugger -- second workaround",
-            ),
+            base
+                .replace(
+                    "/* eslint-enable no-debugger -- end workaround */",
+                    "// eslint-disable-next-line no-debugger -- second workaround",
+                )
+                .replace(effectBoundary, ""),
         );
         git("commit", "-am", "change suppression boundary");
         git("checkout", "main");
@@ -65,26 +60,31 @@ void test("the report reads both Git snapshots from the merge base, independent 
         git("checkout", "feature");
         writeFileSync(join(directory, "sample.ts"), "debugger;\n");
 
-        const result = spawnSync(
-            process.execPath,
-            ["--import", LOADER, REPORT, "main"],
+        const report = readExceptionReport("main", directory);
+        assert.equal(report.commitId, git("rev-parse", "HEAD"));
+        assert.deepEqual(report.changes, [
             {
-                cwd: directory,
-                encoding: "utf8",
-                env: CHILD_ENV,
-                timeout: 20_000,
+                revision: "head",
+                file: "sample.ts",
+                line: 3,
+                directive: "eslint-disable-next-line",
+                reason: "second workaround",
             },
-        );
-        assert.ifError(result.error);
-        assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.match(
-            result.stdout,
-            /Added or edited directive \(head\).*sample\.ts:3.*second workaround/,
-        );
-        assert.match(
-            result.stdout,
-            /Removed or edited suppression boundary \(base\).*sample\.ts:3.*end workaround/,
-        );
+            {
+                revision: "base",
+                file: "sample.ts",
+                line: 3,
+                directive: "eslint-enable",
+                reason: "end workaround",
+            },
+            {
+                revision: "base",
+                file: "sample.ts",
+                line: 6,
+                directive: `${marker} floatingEffect:error`,
+                reason: "end Effect workaround",
+            },
+        ]);
     } finally {
         rmSync(directory, { recursive: true, force: true });
     }
