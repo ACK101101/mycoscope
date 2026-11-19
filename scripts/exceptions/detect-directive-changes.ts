@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import ts from "typescript";
 
 interface ExceptionDirective {
-    readonly file: string;
     readonly line: number;
     readonly directive: string;
     readonly reason: string;
@@ -11,8 +10,16 @@ interface ExceptionDirective {
 export type SourceRevision = "base" | "head";
 
 export type ExceptionChange = ExceptionDirective & {
+    readonly file: string;
+    // Anchor to a changed line, including when only a continuation line changed.
+    readonly line: number;
     readonly revision: SourceRevision;
 };
+
+interface ChangedFile {
+    readonly sourcePath: string;
+    readonly lines: Set<number>;
+}
 
 const ESLINT_DIRECTIVE =
     /^\s*(eslint-disable(?:-next-line|-line)?|eslint-enable|eslint)(?=\s|$)([\s\S]*)$/;
@@ -27,6 +34,11 @@ const SCANNED = /\.(?:tsx?|mts|cts)$/;
 const EFFECT_DIRECTIVE =
     /@effect-diagnostics(?:-next-line)?(?:\s(?:[a-zA-Z0-9/]+|\*):(?:off|warning|error|message|suggestion|skip-file))+/g;
 
+// Git diffs count LF separators; TypeScript also treats CR and Unicode separators as newlines.
+function diffLineFromOffset(source: string, offset: number): number {
+    return source.slice(0, offset).split("\n").length;
+}
+
 function diffFilePath(header: string): string {
     const path = header.slice(4).split("\t")[0] ?? "";
     const decoded: unknown = path.startsWith('"') ? JSON.parse(path) : path;
@@ -36,10 +48,10 @@ function diffFilePath(header: string): string {
 
 function changedLinesByRevision(
     diff: string,
-): Readonly<Record<SourceRevision, ReadonlyMap<string, ReadonlySet<number>>>> {
+): Readonly<Record<SourceRevision, ReadonlyMap<string, ChangedFile>>> {
     const files = {
-        base: new Map<string, Set<number>>(),
-        head: new Map<string, Set<number>>(),
+        base: new Map<string, ChangedFile>(),
+        head: new Map<string, ChangedFile>(),
     };
     let baseFile = "";
     let headFile = "";
@@ -50,9 +62,13 @@ function changedLinesByRevision(
         file: string,
         line: number,
     ): void => {
-        const lines = files[revision].get(file) ?? new Set<number>();
-        lines.add(line);
-        files[revision].set(file, lines);
+        const changed = files[revision].get(headFile) ?? {
+            sourcePath: file,
+            lines: new Set<number>(),
+        };
+        changed.lines.add(line);
+        // GitHub uses the current path for comments on either side of a rename.
+        files[revision].set(headFile, changed);
     };
     for (const raw of diff.split("\n")) {
         const hunk = HUNK.exec(raw);
@@ -130,7 +146,6 @@ function sourceComments(
 }
 
 function commentException(
-    file: string,
     // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- TypeScript traversal APIs consume compiler-owned SourceFile objects.
     source: ts.SourceFile,
     comment: Readonly<ts.CommentRange>,
@@ -171,8 +186,7 @@ function commentException(
     const position =
         comment.pos + 2 + offset + (hit?.[0].indexOf(directive) ?? 0);
     return {
-        file,
-        line: source.getLineAndCharacterOfPosition(position).line + 1,
+        line: diffLineFromOffset(source.text, position),
         directive,
         reason: reason.trim().replace(/\s+/gu, " "),
     };
@@ -188,31 +202,35 @@ export function findExceptionChanges(
     const changedLines = changedLinesByRevision(diff);
     for (const revision of revisions) {
         const changedFiles = changedLines[revision];
-        for (const [file, lines] of changedFiles) {
+        for (const [file, { sourcePath, lines }] of changedFiles) {
             const source = ts.createSourceFile(
-                file,
-                readSource(file, revision),
+                sourcePath,
+                readSource(sourcePath, revision),
                 ts.ScriptTarget.Latest,
                 true,
             );
             for (const comment of sourceComments(source)) {
-                const firstLine =
-                    source.getLineAndCharacterOfPosition(comment.pos).line + 1;
-                const lastLine =
-                    source.getLineAndCharacterOfPosition(comment.end - 1).line +
-                    1;
-                if (
-                    ![...lines].some(
-                        (line) => line >= firstLine && line <= lastLine,
-                    )
-                )
-                    continue;
-                const exception = commentException(file, source, comment);
+                const firstLine = diffLineFromOffset(source.text, comment.pos);
+                const lastLine = diffLineFromOffset(
+                    source.text,
+                    comment.end - 1,
+                );
+                const changedLine = [...lines].find(
+                    (changed) => changed >= firstLine && changed <= lastLine,
+                );
+                if (changedLine === undefined) continue;
+                const exception = commentException(source, comment);
                 if (exception === null) continue;
-                if (revision === "head") found.push({ ...exception, revision });
+                const line = lines.has(exception.line)
+                    ? exception.line
+                    : changedLine;
+                if (revision === "head")
+                    found.push({ ...exception, file, line, revision });
                 else if (exception.directive === "eslint-enable") {
                     found.push({
                         ...exception,
+                        file,
+                        line,
                         revision,
                         directive: "eslint-enable",
                     });
@@ -220,23 +238,22 @@ export function findExceptionChanges(
             }
             // Include both revisions: deleting a restoring override can extend a suppression.
             for (const override of source.text.matchAll(EFFECT_DIRECTIVE)) {
-                const firstLine =
-                    source.getLineAndCharacterOfPosition(override.index).line +
-                    1;
-                const lastLine =
-                    source.getLineAndCharacterOfPosition(
-                        override.index + override[0].length - 1,
-                    ).line + 1;
-                if (
-                    ![...lines].some(
-                        (line) => line >= firstLine && line <= lastLine,
-                    )
-                )
-                    continue;
+                const firstLine = diffLineFromOffset(
+                    source.text,
+                    override.index,
+                );
+                const lastLine = diffLineFromOffset(
+                    source.text,
+                    override.index + override[0].length - 1,
+                );
+                const line = [...lines].find(
+                    (changed) => changed >= firstLine && changed <= lastLine,
+                );
+                if (line === undefined) continue;
                 found.push({
                     revision,
                     file,
-                    line: firstLine,
+                    line,
                     directive: override[0].replace(/\s+/gu, " "),
                     reason: (
                         source.text

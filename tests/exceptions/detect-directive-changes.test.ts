@@ -48,14 +48,14 @@ void test("reports an Effect override when only its continuation line changes", 
             {
                 revision: "head",
                 file: "src/a.ts",
-                line: 1,
+                line: 2,
                 directive: `${marker} effect/floatingEffect:off`,
                 reason: "",
             },
             {
                 revision: "base",
                 file: "src/a.ts",
-                line: 1,
+                line: 2,
                 directive: `${marker} effect/floatingEffect:error`,
                 reason: "",
             },
@@ -129,7 +129,7 @@ void test("reports a deleted continuation in a multiline Effect override", () =>
             {
                 revision: "base",
                 file: "src/a.ts",
-                line: 1,
+                line: 2,
                 directive: `${marker} effect/floatingEffect:error`,
                 reason: "",
             },
@@ -180,7 +180,7 @@ void test("finds multiline directives when only a continuation line changes", ()
             {
                 revision: "head",
                 file: "src/a.ts",
-                line: 2,
+                line: 3,
                 directive: "eslint-disable",
                 reason: "vendor callback",
             },
@@ -278,7 +278,7 @@ void test("distinguishes active block directives from unsupported directive-like
             {
                 revision: "head",
                 file: "src/a.ts",
-                line: 2,
+                line: newline === "\r" ? 1 : 2,
                 directive: "@ts-expect-error",
                 reason: ": vendor type is wrong",
             },
@@ -365,7 +365,7 @@ void test("detects a removed rule in a multiline suppression boundary", () => {
             {
                 revision: "base",
                 file: "src/a.ts",
-                line: 2,
+                line: 3,
                 directive: "eslint-enable",
                 reason: "end workaround",
             },
@@ -373,7 +373,7 @@ void test("detects a removed rule in a multiline suppression boundary", () => {
     );
 });
 
-void test("uses the original path when a boundary is removed during a rename", () => {
+void test("anchors renamed-file deletions at the current path while reading the original source", () => {
     const diff =
         "diff --git a/src/old.ts b/src/new.ts\n--- a/src/old.ts\n+++ b/src/new.ts\n@@ -3 +2,0 @@\n-/* eslint-enable no-debugger -- end workaround */";
     const found = findExceptionChanges(diff, (file, revision) => {
@@ -384,7 +384,7 @@ void test("uses the original path when a boundary is removed during a rename", (
     assert.deepEqual(found, [
         {
             revision: "base",
-            file: "src/old.ts",
+            file: "src/new.ts",
             line: 3,
             directive: "eslint-enable",
             reason: "end workaround",
