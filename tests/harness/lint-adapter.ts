@@ -7,9 +7,8 @@ import {
 } from "./rule-coverage.ts";
 import { offsetFromLocation, type ActualDiagnostic } from "./diagnostics.ts";
 
-// Harness workaround: give in-memory source a path so ESLint applies Mycoscope's
-// lint settings. No file is written. allowDefaultProject below lets the TypeScript
-// project service use tsconfig.json for source outside the project.
+// Harness workaround: lintText supplies source at an in-project placeholder path.
+// Its small TypeScript project inherits Mycoscope's compiler settings and shares setup.
 const SNIPPET_PATH = "tests/snippets/case.ts";
 
 function configuredRuleIds(config: unknown): readonly string[] {
@@ -54,13 +53,6 @@ async function createSingleRuleLinter(
                 linterOptions: checkUnusedDisables
                     ? {}
                     : { reportUnusedDisableDirectives: "off" },
-                languageOptions: {
-                    parserOptions: {
-                        projectService: {
-                            allowDefaultProject: ["tests/snippets/*.ts"],
-                        },
-                    },
-                },
                 rules: {
                     ...Object.fromEntries(
                         rules
