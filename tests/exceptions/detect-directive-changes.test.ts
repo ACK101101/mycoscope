@@ -14,6 +14,129 @@ function report(source: string, file = "src/a.ts"): ExceptionChange[] {
     return findExceptionChanges(addedFile(file, source), () => source);
 }
 
+void test("reports possible Effect overrides in comments and literals", () => {
+    const marker = "@effect-" + "diagnostics";
+    for (const source of [
+        `// ${marker}-next-line effect/floatingEffect:off -- callback owns execution`,
+        `// note: ${marker}-next-line effect/floatingEffect:off -- callback owns execution`,
+        `/**\n * ${marker}-next-line effect/floatingEffect:off -- callback owns execution\n */`,
+        `const text = "${marker}-next-line effect/floatingEffect:off -- callback owns execution";`,
+    ]) {
+        const changes = report(source);
+        assert.equal(changes.length, 1);
+        const change = changes[0];
+        assert.ok(change !== undefined);
+        assert.equal(
+            change.directive,
+            `${marker}-next-line effect/floatingEffect:off`,
+        );
+        assert.match(change.reason, /callback owns execution/);
+    }
+});
+
+void test("reports an Effect override when only its continuation line changes", () => {
+    const marker = "@effect-" + "diagnostics";
+    const base = `/* ${marker}\neffect/floatingEffect:error */`;
+    const head = `/* ${marker}\neffect/floatingEffect:off */`;
+    const diff =
+        "+++ b/src/a.ts\n@@ -2 +2 @@\n-effect/floatingEffect:error */\n+effect/floatingEffect:off */";
+    assert.deepEqual(
+        findExceptionChanges(diff, (_, revision) =>
+            revision === "base" ? base : head,
+        ),
+        [
+            {
+                revision: "head",
+                file: "src/a.ts",
+                line: 2,
+                directive: `${marker} effect/floatingEffect:off`,
+                reason: "",
+            },
+            {
+                revision: "base",
+                file: "src/a.ts",
+                line: 2,
+                directive: `${marker} effect/floatingEffect:error`,
+                reason: "",
+            },
+        ],
+    );
+});
+
+void test("reports deleted Effect overrides with their original settings and locations", () => {
+    const marker = "@effect-" + "diagnostics";
+    const base = `// ${marker} effect/floatingEffect:off\n// ${marker} effect/floatingEffect:error -- end workaround\nf();`;
+    const head = `// ${marker} effect/floatingEffect:off\nf();`;
+    const diff = `--- a/src/a.ts\n+++ b/src/a.ts\n@@ -2 +1,0 @@\n-// ${marker} effect/floatingEffect:error -- end workaround`;
+
+    assert.deepEqual(
+        findExceptionChanges(diff, (_, revision) =>
+            revision === "base" ? base : head,
+        ),
+        [
+            {
+                revision: "base",
+                file: "src/a.ts",
+                line: 2,
+                directive: `${marker} effect/floatingEffect:error`,
+                reason: "end workaround",
+            },
+        ],
+    );
+});
+
+void test("reports both sides when an Effect override changes severity", () => {
+    const marker = "@effect-" + "diagnostics";
+    const base = `// ${marker} *:error`;
+    const head = `// ${marker} *:off`;
+    const diff = `--- a/src/a.ts\n+++ b/src/a.ts\n@@ -1 +1 @@\n-${base}\n+${head}`;
+
+    assert.deepEqual(
+        findExceptionChanges(diff, (_, revision) =>
+            revision === "base" ? base : head,
+        ),
+        [
+            {
+                revision: "head",
+                file: "src/a.ts",
+                line: 1,
+                directive: `${marker} *:off`,
+                reason: "",
+            },
+            {
+                revision: "base",
+                file: "src/a.ts",
+                line: 1,
+                directive: `${marker} *:error`,
+                reason: "",
+            },
+        ],
+    );
+});
+
+void test("reports a deleted continuation in a multiline Effect override", () => {
+    const marker = "@effect-" + "diagnostics";
+    const base = `/* ${marker}\neffect/floatingEffect:error */`;
+    const head = `/* ${marker}\n*/`;
+    const diff =
+        "--- a/src/a.ts\n+++ b/src/a.ts\n@@ -2 +2 @@\n-effect/floatingEffect:error */\n+*/";
+
+    assert.deepEqual(
+        findExceptionChanges(diff, (_, revision) =>
+            revision === "base" ? base : head,
+        ),
+        [
+            {
+                revision: "base",
+                file: "src/a.ts",
+                line: 2,
+                directive: `${marker} effect/floatingEffect:error`,
+                reason: "",
+            },
+        ],
+    );
+});
+
 void test("finds added directives with their source location and reason", () => {
     const source = [
         "const ok = 1;",
@@ -57,7 +180,7 @@ void test("finds multiline directives when only a continuation line changes", ()
             {
                 revision: "head",
                 file: "src/a.ts",
-                line: 2,
+                line: 3,
                 directive: "eslint-disable",
                 reason: "vendor callback",
             },
@@ -155,7 +278,7 @@ void test("distinguishes active block directives from unsupported directive-like
             {
                 revision: "head",
                 file: "src/a.ts",
-                line: 2,
+                line: newline === "\r" ? 1 : 2,
                 directive: "@ts-expect-error",
                 reason: ": vendor type is wrong",
             },
@@ -242,7 +365,7 @@ void test("detects a removed rule in a multiline suppression boundary", () => {
             {
                 revision: "base",
                 file: "src/a.ts",
-                line: 2,
+                line: 3,
                 directive: "eslint-enable",
                 reason: "end workaround",
             },
@@ -250,7 +373,7 @@ void test("detects a removed rule in a multiline suppression boundary", () => {
     );
 });
 
-void test("uses the original path when a boundary is removed during a rename", () => {
+void test("anchors renamed-file deletions at the current path while reading the original source", () => {
     const diff =
         "diff --git a/src/old.ts b/src/new.ts\n--- a/src/old.ts\n+++ b/src/new.ts\n@@ -3 +2,0 @@\n-/* eslint-enable no-debugger -- end workaround */";
     const found = findExceptionChanges(diff, (file, revision) => {
@@ -261,7 +384,7 @@ void test("uses the original path when a boundary is removed during a rename", (
     assert.deepEqual(found, [
         {
             revision: "base",
-            file: "src/old.ts",
+            file: "src/new.ts",
             line: 3,
             directive: "eslint-enable",
             reason: "end workaround",
