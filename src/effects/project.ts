@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import ts from "typescript";
-import type { Executable, Policy, SymbolRef } from "./model.js";
+import type { Policy, SymbolRef } from "./model.js";
 
 function refs(value: unknown): value is readonly SymbolRef[] {
     return (
@@ -17,25 +17,10 @@ function refs(value: unknown): value is readonly SymbolRef[] {
         )
     );
 }
-function executableRefs(value: unknown): value is readonly Executable[] {
-    return (
-        Array.isArray(value) &&
-        value.every(
-            (item: unknown) =>
-                typeof item === "object" &&
-                item !== null &&
-                "command" in item &&
-                typeof item.command === "string" &&
-                "root" in item &&
-                refs([item.root]),
-        )
-    );
-}
 export interface Project {
     readonly program: ts.Program;
     readonly policy: Policy;
 }
-// The compiler also reads files internally; its implementation is an external, unverified graph node.
 export function readProject(configPath: string): Project {
     const filename = resolve(configPath);
     const value: unknown = JSON.parse(readFileSync(filename, "utf8"));
@@ -52,10 +37,6 @@ export function readProject(configPath: string): Project {
         throw new Error(
             "Expected project, wiringRoots, and adapters in the Effect policy.",
         );
-    const executables: unknown =
-        "executables" in value ? value.executables : [];
-    if (!executableRefs(executables))
-        throw new Error("Expected executable command/root mappings.");
     const rootDirectory = dirname(filename);
     const projectPath = resolve(rootDirectory, value.project);
     const config = ts.readConfigFile(projectPath, (path) =>
@@ -85,7 +66,6 @@ export function readProject(configPath: string): Project {
     return {
         program: ts.createProgram(parsed.fileNames, parsed.options),
         policy: {
-            executables,
             rootDirectory,
             wiringRoots: value.wiringRoots,
             adapters: value.adapters,

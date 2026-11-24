@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { test } from "node:test";
 
-void test("wiring CLI emits its graph, fails violations and rejects malformed policy", () => {
+void test("wiring CLI emits its findings, fails violations and rejects malformed policy", () => {
     const directory = mkdtempSync(join(tmpdir(), "mycoscope-cli-"));
     try {
         symlinkSync(
@@ -59,7 +59,10 @@ void test("wiring CLI emits its graph, fails violations and rejects malformed po
         );
         const good = run();
         assert.equal(good.status, 0, String(good.stdout) + String(good.stderr));
-        assert.ok(String(good.stdout).includes('"contracts"'));
+        assert.deepEqual(JSON.parse(String(good.stdout)), {
+            issues: [],
+            exceptions: [],
+        });
         writeFileSync(
             join(directory, "main.ts"),
             'export const n: number = "type error";',
