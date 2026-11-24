@@ -192,6 +192,43 @@ function commentException(
     };
 }
 
+function effectOverrideChanges(
+    text: string,
+    changedLines: ReadonlySet<number>,
+    file: string,
+    revision: SourceRevision,
+): ExceptionChange[] {
+    const found: ExceptionChange[] = [];
+    for (const override of text.matchAll(EFFECT_DIRECTIVE)) {
+        const firstLine = diffLineFromOffset(text, override.index);
+        const lastLine = diffLineFromOffset(
+            text,
+            override.index + override[0].length - 1,
+        );
+        const line = [...changedLines].find(
+            (changed) => changed >= firstLine && changed <= lastLine,
+        );
+        if (line === undefined) continue;
+        found.push({
+            revision,
+            file,
+            line,
+            directive: override[0].replace(/\s+/gu, " "),
+            reason: (
+                text
+                    .slice(override.index + override[0].length)
+                    .split("\n")[0] ?? ""
+            )
+                .split(" -- ")
+                .slice(1)
+                .join(" -- ")
+                .replace(/\*\/\s*$/, "")
+                .trim(),
+        });
+    }
+    return found;
+}
+
 // Inspect complete files on both sides so edits inside multiline comments retain context.
 export function findExceptionChanges(
     diff: string,
@@ -237,36 +274,9 @@ export function findExceptionChanges(
                 }
             }
             // Include both revisions: deleting a restoring override can extend a suppression.
-            for (const override of source.text.matchAll(EFFECT_DIRECTIVE)) {
-                const firstLine = diffLineFromOffset(
-                    source.text,
-                    override.index,
-                );
-                const lastLine = diffLineFromOffset(
-                    source.text,
-                    override.index + override[0].length - 1,
-                );
-                const line = [...lines].find(
-                    (changed) => changed >= firstLine && changed <= lastLine,
-                );
-                if (line === undefined) continue;
-                found.push({
-                    revision,
-                    file,
-                    line,
-                    directive: override[0].replace(/\s+/gu, " "),
-                    reason: (
-                        source.text
-                            .slice(override.index + override[0].length)
-                            .split("\n")[0] ?? ""
-                    )
-                        .split(" -- ")
-                        .slice(1)
-                        .join(" -- ")
-                        .replace(/\*\/\s*$/, "")
-                        .trim(),
-                });
-            }
+            found.push(
+                ...effectOverrideChanges(source.text, lines, file, revision),
+            );
         }
     }
     return found;
