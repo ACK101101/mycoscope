@@ -60,6 +60,7 @@ void test("project parsing preserves JSDoc diagnostics and Effect construction g
                 'import { Effect } from "effect";',
                 "/** An ordinary documentation comment. @deprecated A fixture only. */",
                 "export const task: Effect.Effect<number, never, never> = Effect.succeed(1);",
+                "export const untyped = Effect.succeed(1);",
             ].join("\n"),
         );
         writeFileSync(
@@ -97,8 +98,9 @@ void test("project parsing preserves JSDoc diagnostics and Effect construction g
         assert.deepEqual(diagnostics(project.program), diagnostics(reference));
         const actual = analyze(project.program, project.policy);
         const expected = analyze(reference, project.policy);
-        assert.ok(
-            actual.contracts.some((contract) => contract.file === "main.ts"),
+        assert.deepEqual(
+            actual.issues.map((issue) => [issue.rule, issue.file, issue.line]),
+            [["effect-contract", "main.ts", 4]],
         );
         assert.deepEqual(actual, expected);
     } finally {
